@@ -1,5 +1,5 @@
 # Introduction  
-![PoseMatcher](Images\PoseMatcher_Preview.png)
+![PoseMatcher](Images/PoseMatcher_Preview.png)
 PoseMatcher is a tool for pose alignment, currently focused on aligning non-Metahuman humanoid characters to the default Metahuman pose. It has been tested with DAZ8, DAZ9, and Mixamo models.
 
 # Usage  
