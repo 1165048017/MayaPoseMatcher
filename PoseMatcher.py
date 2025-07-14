@@ -7,13 +7,11 @@ import os
 import re
 
 def get_base_name(obj_name):
-    """获取对象的基名称（去除命名空间和路径）"""
+    """Get the base name of an object (excluding namespace and path)"""
     return obj_name.split(":")[-1].split("|")[-1]
 
 def apply_global_rotation_to_vector(rotation_quaternion, vector):
-    # 4. 创建一个 MVector 对象来表示您要旋转的向量
     vector_mvector = om.MVector(vector[0], vector[1], vector[2])
-    # 6. 使用 rotateBy 方法将旋转应用到向量上
     rotated_vector = vector_mvector.rotateBy(rotation_quaternion)
     return [rotated_vector.x, rotated_vector.y, rotated_vector.z]
 
@@ -31,7 +29,7 @@ def calculate_angle_3d(a, b):
     return np.degrees(theta)
 
 def get_joint_lra(joint, length=10.0):
-    # 获取关节世界位置
+    # Get the world position of the joint
     pos = cmds.xform(joint, q=True, ws=True, t=True)
     origin = om.MVector(pos)
 
@@ -44,11 +42,11 @@ def get_joint_lra(joint, length=10.0):
     )
     rot_matrix = euler.asMatrix()
 
-    # 提取旋转轴方向向量
+    # Extract the rotation axis direction vector
     x_axis = om.MVector(rot_matrix[0], rot_matrix[1], rot_matrix[2]).normal()
     y_axis = om.MVector(rot_matrix[4], rot_matrix[5], rot_matrix[6]).normal()
     z_axis = om.MVector(rot_matrix[8], rot_matrix[9], rot_matrix[10]).normal()
-    # 计算终点
+    # Calculate the endpoint
     x_end = origin + x_axis * length
     y_end = origin + y_axis * length
     z_end = origin + z_axis * length
@@ -75,11 +73,11 @@ def get_joint_global_lra(joint, length=100.0):
     )
     euler_matrix = euler.asMatrix()
     rot_matrix = m_matrix*(euler_matrix.inverse())
-    # 提取旋转轴方向向量
+    # Extract the rotation axis direction vector
     x_axis = om.MVector(rot_matrix[0], rot_matrix[1], rot_matrix[2]).normal()
     y_axis = om.MVector(rot_matrix[4], rot_matrix[5], rot_matrix[6]).normal()
     z_axis = om.MVector(rot_matrix[8], rot_matrix[9], rot_matrix[10]).normal()
-    # 计算终点
+    # Calculate the endpoint
     x_end = origin + x_axis * length
     y_end = origin + y_axis * length
     z_end = origin + z_axis * length
@@ -95,8 +93,8 @@ def findClose0or180(angles):
         print(angle)
         newAngles.append(min(angle,180-abs(angle)))
     print(newAngles)
-    min_value = min(newAngles)  # 找到最小值
-    min_index = newAngles.index(min_value)  # 找到最小值的索引
+    min_value = min(newAngles)  # find the minimize value
+    min_index = newAngles.index(min_value)  # find the minimize value's index
     print(min_index)
     return min_index
 
@@ -120,31 +118,30 @@ def getAimUpVector(joint_name, boneDir):
     return [aimVector, axis[(min_index+1)%3]]
 
 def rotate_joint_to_direction(joint_name,aimVector,target_direction):
-    # 创建一个空对象作为目标
+    # create an empty object as a target
     target_object = cmds.spaceLocator(name="target")[0]
-    # 设置空对象的位置为关节1的位置，以确保它与关节1重合
+    # Position the null object at joint1's location to ensure it coincides with joint1
     cmds.delete(cmds.parentConstraint(joint_name, target_object))
-    # 将空对象的位置移动到目标方向
+    # Move the null object's position to the target direction.
     global_position = cmds.xform(joint_name, query=True, worldSpace=True, translation=True)
     cmds.move(global_position[0]+target_direction[0], global_position[1]+target_direction[1], global_position[2]+target_direction[2], target_object, absolute=True)
-    # 使用 aimConstraint 使关节2指向空对象
+    # Use an aimConstraint to make joint2 point at the null object
     cmds.aimConstraint(target_object, joint_name, aimVector=aimVector)
     # if("_l" in joint_name or "l_" in joint_name):
     #     cmds.aimConstraint(target_object, joint_name, aimVector=[1,0,0],upVector=[0,1,0])
     # else:
     #     cmds.aimConstraint(target_object, joint_name, aimVector=[-1,0,0],upVector=[0,1,0])
-    # 删除临时创建的目标对象
+    # Delete the temporarily created target object.
     # cmds.delete(target_object)
 
 def normalize_vector(v):
-    """将向量归一化"""
     norm = np.linalg.norm(v)
     if norm == 0:
         return v
     return v / norm
 
 def get_joint_position(joint):
-    """获取关节的世界坐标位置"""
+    """get joint's global position"""
     pos = cmds.xform(joint, query=True, worldSpace=True, translation=True)
     return np.array(pos)
 
@@ -214,13 +211,13 @@ def getNeedRot(v1:om.MVector,v2:om.MVector):
     return rot_quat.asMatrix()
 
 def align_parent_to_vector(child_joint, target_vector):
-    """将父关节指向子关节的方向对齐到目标向量"""
-    # 获取父关节和子关节的位置
+    """Align the parent joint's direction toward its child joint with the target vector."""    
     parent_joint = cmds.listRelatives(child_joint, parent=True, fullPath=True)[0]
     if(("twist" in parent_joint.rsplit('|', 1)[-1]) or ("Twist" in parent_joint.rsplit('|', 1)[-1])):
         parent_joint = cmds.listRelatives(parent_joint, parent=True, fullPath=True)[0]
     parent_delta_global_rot = get_parent_delta_global_rot(parent_joint)
     
+    # get the position of child and parent joint
     parent_pos = get_joint_position(parent_joint)
     child_pos = get_joint_position(child_joint)
     boneVec = om.MVector(child_pos[0] - parent_pos[0], child_pos[1] - parent_pos[1],child_pos[2] - parent_pos[2])
@@ -247,14 +244,14 @@ def align_parent_to_vector(child_joint, target_vector):
 
     order = getRotOrder(parent_joint)
     ordered_euler = new_rot_euler.reorderIt(order)
-    # 应用旋转到父关节的局部旋转
+    # Apply the rotation to the parent joint's local rotation.
     print(f"Adjust {parent_joint}")
     cmds.setAttr(parent_joint + '.rotateX', math.degrees(ordered_euler[0]))
     cmds.setAttr(parent_joint + '.rotateY', math.degrees(ordered_euler[1]))
     cmds.setAttr(parent_joint + '.rotateZ', math.degrees(ordered_euler[2]))
 
 def find_joint_by_base_name(base_name, root_joint):
-    """在指定根关节下查找具有相同基名称的关节"""
+    """Find joints with the same base name under the specified root joint."""
     all_joints = cmds.listRelatives(root_joint, allDescendents=True, type="joint") or []
     all_joints.append(root_joint)
     
@@ -264,7 +261,7 @@ def find_joint_by_base_name(base_name, root_joint):
     return None
 
 def get_joint_direction(joint_name):
-    """获取关节相对于父关节的方向向量"""
+    """Get the direction vector of the joint relative to its parent joint."""
     parent = cmds.listRelatives(joint_name, parent=True)
     
     if not parent:
@@ -298,7 +295,7 @@ def resetTwist(jointname, original_rot, rotAxis):
     cmds.setAttr(jointname + rotAixsName, original_rot[rotIndex])
 
 def align_skeleton(joint_map, mh_root, daz_root):
-    """对齐骨架的主函数"""
+    """Main function for aligning the skeleton."""
     processed_parents = set()
     error_joints = []
     joint_aim_map = {}
@@ -311,35 +308,35 @@ def align_skeleton(joint_map, mh_root, daz_root):
         joint_local_rot[parent[0]] = getlocalRotation(parent[0])
 
     for mh_joint_name, daz_joint_name in joint_map.items():
-        # 查找MetaHuman关节
+        # Find MetaHuman joints.
         mh_joint = find_joint_by_base_name(mh_joint_name, mh_root)
         if not mh_joint:
             cmds.warning(f"⚠️ MetaHuman joint '{mh_joint_name}' not found under root '{get_base_name(mh_root)}'")
             error_joints.append(mh_joint_name)
             continue
             
-        # 查找DAZ关节
+        # Find DAZ joints.
         daz_joint = find_joint_by_base_name(daz_joint_name, daz_root)
         if not daz_joint:
             cmds.warning(f"⚠️ DAZ joint '{daz_joint_name}' not found under root '{get_base_name(daz_root)}'")
             error_joints.append(daz_joint_name)
             continue
         
-        # 获取DAZ父关节
+        # Get the DAZ parent joint.
         daz_parents = cmds.listRelatives(daz_joint, parent=True)
         if not daz_parents:
             cmds.warning(f"⚠️ DAZ joint '{get_base_name(daz_joint)}' has no parent")
             continue
         daz_parent = daz_parents[0]
         
-        # 避免多次处理同一父关节
+        # Avoid processing the same parent joint multiple times.
         if daz_parent in processed_parents:
             continue
             
-        # 获取方向向量
+        # Get the direction vector.
         target_direction = get_joint_direction(mh_joint)        
         
-        # 应用旋转
+        # Apply the rotation
         try:
             # rotate_joint_to_direction(daz_parent,joint_aim_map[daz_parent],target_direction)
             # resetTwist(daz_parent,joint_local_rot[daz_parent],joint_aim_map[daz_parent])
@@ -350,14 +347,14 @@ def align_skeleton(joint_map, mh_root, daz_root):
             cmds.warning(f"⚠️ Failed to align {get_base_name(daz_parent)}: {str(e)}")
             error_joints.append(mh_joint_name)
     
-    # 显示总结信息
+    # summary
     if error_joints:
         cmds.warning(f"⚠️ Alignment completed with {len(error_joints)} errors.")
     else:
         cmds.warning("🎉 Alignment completed successfully!")
 
 def save_joint_map(file_path, joint_map):
-    """保存关节映射到JSON文件"""
+    """Save the joint mapping to a JSON file."""
     try:
         with open(file_path, 'w') as f:
             json.dump(joint_map, f, indent=4)
@@ -367,7 +364,7 @@ def save_joint_map(file_path, joint_map):
         return False
 
 def load_joint_map(file_path):
-    """从JSON文件加载关节映射"""
+    """Load the joint mapping from a JSON file."""
     try:
         if not os.path.exists(file_path):
             return {}
@@ -375,9 +372,9 @@ def load_joint_map(file_path):
         with open(file_path, 'r') as f:
             data = json.load(f)
         
-        # 兼容旧格式处理
+        # Handle compatibility with legacy formats.
         if isinstance(data, list):
-            # 旧格式: [{"mh_joint": "name", "daz_joint": "name"}]
+            # legacy format: [{"mh_joint": "name", "daz_joint": "name"}]
             new_data = {}
             for item in data:
                 if isinstance(item, dict) and "mh_joint" in item:
@@ -385,76 +382,76 @@ def load_joint_map(file_path):
                     new_data[mh_name] = item.get("daz_joint", "")
             return new_data
         
-        # 新格式: {"mh_joint_name": "daz_joint_name"}
+        # new format: {"mh_joint_name": "daz_joint_name"}
         return data
     except Exception as e:
         cmds.warning(f"⚠️ Failed to load joint map: {str(e)}")
         return {}
 
 def auto_detect_namespace(joint_list):
-    """自动检测并返回最常见的命名空间"""
+    """Automatically detect and return the most common namespace."""
     namespaces = {}
     for joint in joint_list:
         base_name = get_base_name(joint)
-        # 检测命名空间格式 (mynamespace:joint)
+        # Detect the namespace format. (mynamespace:joint)
         if ":" in joint:
             ns = joint.split(":")[0]
             namespaces[ns] = namespaces.get(ns, 0) + 1
-        # 检测前缀格式 (prefix_joint)
+        # Detect the prefix format (prefix_joint)
         else:
             prefix_match = re.search(r"^([^_]+)_", base_name)
             if prefix_match:
                 prefix = prefix_match.group(1)
                 namespaces[prefix] = namespaces.get(prefix, 0) + 1
     
-    # 返回最常见的命名空间/前缀
+    # Return the most common namespace or prefix.
     if namespaces:
         return max(namespaces, key=namespaces.get)
     return ""
 
 _syncing_selection = False
 def sync_selections(*_):
-    """同步两个列表的选择状态"""
+    """Synchronize the selection state between the two lists."""
     global _syncing_selection
     
-    # 如果正在同步中，则跳过
+    # Skip if synchronization is in progress.
     if _syncing_selection:
         return
-    # 设置同步标志
+    # Set the synchronization flag.
     _syncing_selection = True
     
-    # 获取当前活动列表
+    # Get the currently active list.
     active_list = cmds.textScrollList("mhJointsList", q=True, selectItem=True)
     if active_list:
-        # MetaHuman列表被选中
+        # MetaHuman list is selected
         selected_indices = cmds.textScrollList("mhJointsList", q=True, selectIndexedItem=True) or []
         if selected_indices:
-            # 同步到DAZ列表
+            # Sync to DAZ list
             cmds.textScrollList("dazJointsList", e=True, deselectAll=True)
             for index in selected_indices:
                 cmds.textScrollList("dazJointsList", e=True, selectIndexedItem=index)
     else:
-        # DAZ列表被选中
+        # The DAZ list is selected.
         selected_indices = cmds.textScrollList("dazJointsList", q=True, selectIndexedItem=True) or []
         if selected_indices:
-            # 同步到MetaHuman列表
+            # Sync to MetaHuman list
             cmds.textScrollList("mhJointsList", e=True, deselectAll=True)
             for index in selected_indices:
                 cmds.textScrollList("mhJointsList", e=True, selectIndexedItem=index)
     
-    # 清除同步标志
+    # Clear the sync flag
     _syncing_selection = False
 
 def create_alignment_ui():
-    """创建对齐工具的UI界面"""
+    """Create the UI window"""
     win_name = "skeletonAlignmentUI"
     if cmds.window(win_name, exists=True):
         cmds.deleteUI(win_name)
     
-    # 创建主窗口 - 固定大小确保所有内容可见
+    # Create main window - Fixed size to ensure all content is visible
     cmds.window(win_name, title="Skeleton Alignment Tool", width=520, height=700, sizeable=False)
     
-    # 主布局 - 垂直列布局
+    # Main layout - Vertical column layout
     main_layout = cmds.columnLayout(
         adjustableColumn=True,
         columnAttach=('both', 5),
@@ -462,7 +459,7 @@ def create_alignment_ui():
         height=690
     )
     
-    # ================ 骨架设置部分 ================
+    # ================ set skeleton ================
     skeleton_frame = cmds.frameLayout(
         label="Skeleton Settings",
         collapsable=True,
@@ -471,7 +468,7 @@ def create_alignment_ui():
         marginHeight=5
     )
     
-    # MetaHuman根关节设置
+    # MetaHuman root joint
     cmds.gridLayout(numberOfColumns=3, cellWidth=170)
     cmds.text(label="MetaHuman Root:", align="right")
     mh_root_field = cmds.textField("mhRootField", width=120)
@@ -486,7 +483,7 @@ def create_alignment_ui():
     )
     cmds.setParent("..")
     
-    # DAZ根关节设置
+    # DAZ root joint
     cmds.gridLayout(numberOfColumns=3, cellWidth=170)
     cmds.text(label="DAZ Root Joint:", align="right")
     daz_root_field = cmds.textField("dazRootField", width=120)
@@ -501,7 +498,7 @@ def create_alignment_ui():
     )
     cmds.setParent("..")
     
-    # DAZ命名空间
+    # DAZ namepsace
     cmds.gridLayout(numberOfColumns=3, cellWidth=170)
     cmds.text(label="DAZ Namespace:", align="right")
     daz_ns_field = cmds.textField("dazNsField", width=120)
@@ -512,7 +509,7 @@ def create_alignment_ui():
     cmds.setParent("..")
     cmds.setParent("..")
     
-    # ================ 文件设置部分 ================
+    # ================ file ================
     file_frame = cmds.frameLayout(
         label="File Settings",
         collapsable=True,
@@ -521,7 +518,7 @@ def create_alignment_ui():
         marginHeight=5
     )
     
-    # JSON文件设置
+    # JSON file
     cmds.gridLayout(numberOfColumns=3, cellWidth=170)
     cmds.text(label="JSON File Path:", align="right")
     json_path_field = cmds.textField("jsonPathField", width=120)
@@ -538,7 +535,7 @@ def create_alignment_ui():
     )
     cmds.setParent("..")
     
-    # 文件控制按钮
+    # file button
     cmds.gridLayout(numberOfColumns=3, cellWidth=170)
     cmds.button(label="Load Map", command=lambda *_: load_map_cmd(), height=30)
     cmds.button(label="Save Map", command=lambda *_: save_map_cmd(), height=30)
@@ -546,7 +543,7 @@ def create_alignment_ui():
     cmds.setParent("..")
     cmds.setParent("..")
     
-    # ================ 关节映射部分 ================
+    # ================ joint map ================
     map_frame = cmds.frameLayout(
         label="Joint Mapping",
         collapsable=False,
@@ -555,19 +552,19 @@ def create_alignment_ui():
         marginHeight=5
     )
     
-    # 标题行
+    # row title
     cmds.gridLayout(numberOfColumns=2, cellWidth=250)
     cmds.text(label="MetaHuman Joints", align="center", height=20)
     cmds.text(label="DAZ Joints", align="center", height=20)
     cmds.setParent("..")
     
-    # 列表区域 - 保证有足够的高度
+    # List area - Ensures sufficient height
     cmds.rowLayout(numberOfColumns=2, height=200)
     mh_list = cmds.textScrollList("mhJointsList", allowMultiSelection=True, height=200, width=250, selectCommand=sync_selections)
     daz_list = cmds.textScrollList("dazJointsList", allowMultiSelection=True, height=200, width=250, selectCommand=sync_selections)
     cmds.setParent("..")
     
-    # 控制按钮
+    # Controll button
     cmds.gridLayout(numberOfColumns=4, cellWidth=130, cellHeight=30)
     cmds.button(label="Add Selected", command=lambda *_:add_selected_cmd())
     cmds.button(label="Remove Selected", command=lambda *_:remove_selected_cmd())
@@ -576,7 +573,7 @@ def create_alignment_ui():
     cmds.setParent("..")
     cmds.setParent("..")
     
-    # ================ 执行按钮 ================
+    # ================ Execute ================
     cmds.separator(height=10)
     cmds.button(
         label="ALIGN SKELETONS", 
@@ -585,13 +582,13 @@ def create_alignment_ui():
         command=lambda *_: execute_alignment_cmd()
     )
     
-    # 初始化表格和默认值
+    # initialize
     reset_table()
     
     cmds.showWindow(win_name)
 
 def auto_detect_ns_cmd():
-    """自动检测并设置DAZ命名空间"""
+    """Automatically detect and set the DAZ namespace"""
     daz_root = cmds.textField("dazRootField", q=True, text=True)
     
     if not daz_root or not cmds.objExists(daz_root):
@@ -610,7 +607,7 @@ def auto_detect_ns_cmd():
         cmds.warning("⚠️ No common DAZ namespace/prefix found")
 
 def load_map_cmd():
-    """加载关节映射文件"""
+    """load joint map file"""
     json_path = cmds.textField("jsonPathField", q=True, text=True)
     if not json_path or not os.path.exists(json_path):
         cmds.warning("⚠️ Select a valid JSON file path")
@@ -627,13 +624,13 @@ def load_map_cmd():
     cmds.warning(f"📖 Loaded {len(joint_map)} mappings from {json_path}")
 
 def save_map_cmd():
-    """保存关节映射到文件"""
+    """save joint map file"""
     json_path = cmds.textField("jsonPathField", q=True, text=True)
     if not json_path:
         cmds.warning("⚠️ Set a JSON file path first")
         return
     
-    # 获取映射数据
+    # get the map data
     joint_map = {}
     mh_joints = cmds.textScrollList("mhJointsList", q=True, allItems=True) or []
     daz_joints = cmds.textScrollList("dazJointsList", q=True, allItems=True) or []
@@ -645,7 +642,7 @@ def save_map_cmd():
     for i in range(len(mh_joints)):
         joint_map[mh_joints[i]] = daz_joints[i]
     
-    # 保存到文件
+    # save to file
     if save_joint_map(json_path, joint_map):
         cmds.warning(f"💾 Saved {len(joint_map)} mappings to {json_path}")
 
@@ -654,7 +651,7 @@ def reset_table():
     cmds.textScrollList("mhJointsList", e=True, removeAll=True)
     cmds.textScrollList("dazJointsList", e=True, removeAll=True)
     
-    # 添加默认值
+    # add the default value
     defaults = [
         ("upperarm_l", "l_upperarm"),
         ("lowerarm_l", "l_forearm"),
@@ -671,7 +668,7 @@ def reset_table():
     cmds.warning("🔄 Reset to default mappings")
 
 def add_selected_cmd():
-    """添加选中的关节对到映射表"""
+    """Add the selected joint pairs to the mapping table"""
     selected = cmds.ls(selection=True, type="joint")
     if not selected or len(selected) < 2:
         cmds.warning("⚠️ Select 2 joints (MetaHuman joint first, then DAZ joint)")
@@ -689,48 +686,48 @@ def add_selected_cmd():
     cmds.textScrollList("dazJointsList", e=True, append=daz_base)
 
 def remove_selected_cmd(*_):
-    """从映射表中移除选中的关节对"""
-    # 获取选中的项目
+    """Remove the selected joint pairs from the mapping table"""
+    # get the select item
     mh_selected = cmds.textScrollList("mhJointsList", q=True, selectItem=True) or []
     daz_selected = cmds.textScrollList("dazJointsList", q=True, selectItem=True) or []
     
-    # 如果没有选中任何项目，直接返回
+    # return if nothing select
     if not mh_selected and not daz_selected:
         return
     
-    # 获取所有项目
+    # get all the items
     mh_items = cmds.textScrollList("mhJointsList", q=True, allItems=True) or []
     daz_items = cmds.textScrollList("dazJointsList", q=True, allItems=True) or []
     
-    # 创建要删除的项目列表
+    # create the items which need to be removed
     items_to_remove = set()
     
-    # 添加MetaHuman选中的项目
+    # add MetaHuman select item
     for item in mh_selected:
         if item in mh_items:
             items_to_remove.add(item)
     
-    # 添加DAZ选中的项目
+    # add DAZ select item
     for item in daz_selected:
         if item in daz_items:
             items_to_remove.add(item)
     
-    # 如果没有任何项目可以删除，直接返回
+    # return if nothing remove
     if not items_to_remove:
         return
     
-    # 删除MetaHuman列表中的项目
+    # remove MetaHuman items
     for item in items_to_remove:
         if item in mh_items:
             cmds.textScrollList("mhJointsList", e=True, removeItem=item)
     
-    # 删除DAZ列表中的项目
+    # remove DAZ items
     for item in items_to_remove:
         if item in daz_items:
             cmds.textScrollList("dazJointsList", e=True, removeItem=item)
 
 def add_finger_mapping():
-    """添加手指关节的默认映射"""
+    """add fingers"""
     finger_types = ["thumb", "index", "middle", "ring", "pinky"]
     
     for side in ["_l", "_r"]:
@@ -744,8 +741,8 @@ def add_finger_mapping():
     cmds.warning("🖐 Added finger mappings")
 
 def auto_detect_cmd():
-    """自动检测关节映射"""
-    # 获取根关节
+    """Auto detect joints"""
+    # get root bone
     mh_root = cmds.textField("mhRootField", q=True, text=True)
     daz_root = cmds.textField("dazRootField", q=True, text=True)
     daz_ns = cmds.textField("dazNsField", q=True, text=True) or ""
@@ -758,25 +755,25 @@ def auto_detect_cmd():
         cmds.warning("⚠️ Set the DAZ root joint first")
         return
     
-    # 重置表格
+    # reset the table
     cmds.textScrollList("mhJointsList", e=True, removeAll=True)
     cmds.textScrollList("dazJointsList", e=True, removeAll=True)
     
-    # 获取所有MetaHuman关节
+    # get all the metahuman joints
     mh_joints = cmds.listRelatives(mh_root, allDescendents=True, type="joint", fullPath=True) or []
     mh_joints.append(mh_root)
     
-    # 获取所有DAZ关节
+    # get all the daz joints
     daz_joints = cmds.listRelatives(daz_root, allDescendents=True, type="joint", fullPath=True) or []
     daz_joints.append(daz_root)
     
     matched_count = 0
     
-    # 创建映射 - 基于基名称匹配
+    # Create Mapping - Based on Base Name Matching
     for mh_joint in mh_joints:
         mh_base = get_base_name(mh_joint)
         
-        # 在DAZ关节中查找匹配项
+        # Search for matches in DAZ joints
         for daz_joint in daz_joints:
             daz_base = get_base_name(daz_joint)
             
@@ -795,8 +792,8 @@ def auto_detect_cmd():
     cmds.warning(f"🔍 Auto-detected {matched_count} joint mappings")
 
 def execute_alignment_cmd():
-    """执行骨架对齐操作"""
-    # 获取根关节
+    """Execute Skeleton Alignment Operation"""
+    # Get Root Joint
     mh_root = cmds.textField("mhRootField", q=True, text=True)
     daz_root = cmds.textField("dazRootField", q=True, text=True)
     
@@ -808,7 +805,7 @@ def execute_alignment_cmd():
         cmds.warning("⚠️ Set the DAZ root joint first")
         return
     
-    # 构建关节映射
+    # Build Joint Mapping
     joint_map = {}
     mh_joints = cmds.textScrollList("mhJointsList", q=True, allItems=True) or []
     daz_joints = cmds.textScrollList("dazJointsList", q=True, allItems=True) or []
@@ -824,20 +821,20 @@ def execute_alignment_cmd():
     for i in range(len(mh_joints)):
         joint_map[mh_joints[i]] = daz_joints[i]
     
-    # 自动保存当前映射（可选）
+    # Automatically save the current mapping (optional)
     json_path = cmds.textField("jsonPathField", q=True, text=True)
     if json_path:
         if save_joint_map(json_path, joint_map):
             cmds.warning(f"💾 Map saved to {json_path}")
     
-    # 执行对齐
+    # Perform alignment
     cmds.warning("🔧 Starting skeleton alignment...")
-    cmds.refresh(suspend=True)  # 提高性能
+    cmds.refresh(suspend=True)
     align_skeleton(joint_map, mh_root, daz_root)
     cmds.refresh(suspend=False)
     cmds.refresh()
     cmds.warning("✅ Done!")
 
-# 启动UI
+# Start the UI
 if __name__ == "__main__":
     create_alignment_ui()
