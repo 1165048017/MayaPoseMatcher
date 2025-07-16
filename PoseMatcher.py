@@ -555,7 +555,7 @@ def create_alignment_ui():
     # row title
     cmds.gridLayout(numberOfColumns=2, cellWidth=250)
     cmds.text(label="MetaHuman Joints", align="center", height=20)
-    cmds.text(label="DAZ Joints", align="center", height=20)
+    cmds.text(label="Your Model Joints", align="center", height=20)
     cmds.setParent("..")
     
     # List area - Ensures sufficient height
@@ -581,6 +581,19 @@ def create_alignment_ui():
         backgroundColor=[0.3, 0.6, 0.8],
         command=lambda *_: execute_alignment_cmd()
     )
+
+    # ================ Mesh tool ================    
+    mesh_frame = cmds.frameLayout(
+        label="Mesh utils",
+        collapsable=True,
+        borderStyle="etchedIn",
+        marginWidth=5,
+        marginHeight=5
+    )
+    cmds.gridLayout(numberOfColumns=2, cellWidth=170)
+    cmds.button(label="Merge to one mesh", command=lambda *_: load_map_cmd(), height=30)
+    cmds.button(label="Restore to two meshes", command=lambda *_: save_map_cmd(), height=30)
+    cmds.setParent("..")
     
     # initialize
     reset_table()

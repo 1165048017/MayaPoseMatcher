@@ -267,7 +267,7 @@ def build_mesh_from_numpy(v, uv, vt, vn, name='newMesh'):
 
     # 4. 创建空 mesh
     mfn = om2.MFnMesh()
-    mesh_obj = mfn.create(points, face_counts, face_connects, name=name)
+    mesh_obj = mfn.create(points, face_counts, face_connects)
 
     # 5. 写入 UV
     u_arr = om2.MFloatArray(uv[:, 0].tolist())
@@ -315,8 +315,8 @@ if __name__ == "__main__":
         # merged_vn = np.load('E:/Code/python/MayaPoseMatcher/debugUse/merged_vn.npy')
         # overlap_idx1 = np.load('E:/Code/python/MayaPoseMatcher/debugUse/overlap_idx1.npy')
 
-        build_mesh_from_numpy(merged_v,merged_uv,merged_f, merged_vn, name='MyMergedMesh')
+        # build_mesh_from_numpy(merged_v,merged_uv,merged_f, merged_vn, name='MyMergedMesh')
 
-        # writeWithColor(merged_f,merged_v,merged_uv,merged_vn, overlap_idx1, "E:/Code/python/MayaPoseMatcher/debugUse/merged.obj")
+        writeWithColor(merged_f,merged_v,merged_uv,merged_vn, overlap_idx1, "E:/Code/python/MayaPoseMatcher/debugUse/merged.obj")
     except RuntimeError as e:
         cmds.warning(str(e))
