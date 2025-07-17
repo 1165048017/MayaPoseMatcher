@@ -142,7 +142,7 @@ def writeWithColor(f,v,uv,vn,IdxsWithColor,name):
         else:
             fp.write("v {0} {1} {2}\n".format(v[i,0],v[i,1],v[i,2]))
     for i in range(uv.shape[0]):        
-        fp.write("uv {0} {1}\n".format(uv[i,0],uv[i,1]))
+        fp.write("vt {0} {1}\n".format(uv[i,0],uv[i,1]))
     for i in range(vn.shape[0]):        
         fp.write("vn {0} {1} {2}\n".format(vn[i,0],vn[i,1],vn[i,2]))
     curr_fid = -1
