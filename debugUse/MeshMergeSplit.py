@@ -134,7 +134,7 @@ def detect_and_select_overlaps(decimals: int = 3):
 def writeWithColor(f,v,uv,vn,IdxsWithColor,name):
     fp = open(name,'w')
     for i in range(v.shape[0]):
-        if(IdxsWithColor!=[] and IdxsWithColor.shape[0]!=0):
+        if(IdxsWithColor!=[]):
             if i in IdxsWithColor:
                 fp.write("v {0} {1} {2} 1 0 0\n".format(v[i,0],v[i,1],v[i,2]))
             else:
@@ -317,6 +317,6 @@ if __name__ == "__main__":
 
         # build_mesh_from_numpy(merged_v,merged_uv,merged_f, merged_vn, name='MyMergedMesh')
 
-        writeWithColor(merged_f,merged_v,merged_uv,merged_vn, overlap_idx1, "E:/Code/python/MayaPoseMatcher/debugUse/merged.obj")
+        writeWithColor(merged_f,merged_v,merged_uv,merged_vn, overlap_idx1.tolist(), "E:/Code/python/MayaPoseMatcher/debugUse/merged.obj")
     except RuntimeError as e:
         cmds.warning(str(e))
