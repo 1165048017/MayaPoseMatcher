@@ -241,51 +241,59 @@ def MergeMeshes(mesh1_f,mesh2_f,mesh1_v,mesh2_v,mesh1_uv,mesh2_uv,mesh1_vn,mesh2
     merged_f = ProcessFaces(mesh1_f,mesh2_f,map_v,map_uv,map_vn)
     return merged_f, merged_v,merged_uv,merged_vn
 
-# --------------------------------------------------
-# 6. 创建mesh
-# --------------------------------------------------
+def assign_lambert_to_mesh(mesh_transform, color=(0.5, 0.5, 0.5)):
+    """给 transform 指定一个 Lambert 材质"""
+    shape = cmds.listRelatives(mesh_transform, s=True, type='mesh')[0]
+    sg = cmds.sets(renderable=True, noSurfaceShader=True, empty=True, name="lambert1SG")
+    lamb = cmds.shadingNode("lambert", asShader=True, name="lambert1")
+    cmds.setAttr(lamb + ".color", *color, type="double3")
+    cmds.connectAttr(lamb + ".outColor", sg + ".surfaceShader", force=True)
+    cmds.sets(shape, edit=True, forceElement=sg)
+
 def build_mesh_from_numpy(v, uv, vt, vn, name='newMesh'):
     """
-    v   : (N,3)  float  顶点
-    uv  : (M,2)  float  顶点级 UV
-    vt  : (K,4)  int    face-vertex 映射 [face_id, vert_id, uv_id, vn_id]
-    vn  : (P,3)  float  顶点级法线
+    v   : (N,3)  float   顶点
+    uv  : (M,2)  float   顶点级 UV
+    vt  : (K,4)  int     每行 [face_id, vert_id, uv_id, vn_id]
+                         同一 face_id 连续出现，长度=该面顶点数
+    vn  : (P,3)  float   顶点级法线
     """
-    # 1. 基本检查
-    if v.ndim != 2 or v.shape[1] != 3:
-        raise ValueError('v 必须是 (N,3)')
-    if vt.shape[1] != 4:
-        raise ValueError('vt 必须是 (K,4)')
-
-    # 2. 构造 MPointArray
+    # ---------- 1. 顶点 ----------
     points = om2.MPointArray([om2.MPoint(*p) for p in v])
 
-    # 3. 构造 faceCounts 与 faceConnects
-    # vt 已按 face_id 连续排列，每 3 个一组就是三角形
-    face_counts  = [3] * (vt.shape[0] // 3)
-    face_connects = om2.MIntArray(vt[:, 1].tolist())  # vert_id 列
+    # ---------- 2. face_counts & 所有 per-face-vertex 索引 ----------
+    face_ids = vt[:, 0]
+    unique, counts = np.unique(face_ids, return_counts=True)
+    face_counts   = om2.MIntArray(counts.tolist())
+    face_connects = om2.MIntArray(vt[:, 1].tolist())
+    uv_ids        = om2.MIntArray(vt[:, 2].tolist())
+    norm_coords   = [om2.MVector(*vn[i]) for i in vt[:, 3]]
+    norm_arr      = om2.MVectorArray(norm_coords)  # 预先生成法线数组
 
-    # 4. 创建空 mesh
+    # ---------- 3. 创建 mesh ----------
     mfn = om2.MFnMesh()
-    mesh_obj = mfn.create(points, face_counts, face_connects)
+    mobj = mfn.create(points, face_counts, face_connects)
 
-    # 5. 写入 UV
+    # ---------- 4. UV ----------
     u_arr = om2.MFloatArray(uv[:, 0].tolist())
     v_arr = om2.MFloatArray(uv[:, 1].tolist())
     mfn.setUVs(u_arr, v_arr)
-    uv_ids = om2.MIntArray(vt[:, 2].tolist())   # uv_id 列
-    mfn.assignUVs(om2.MIntArray(face_counts), uv_ids)
+    mfn.assignUVs(face_counts, uv_ids)
 
-    # 6. 写入法线（顶点级）
-    norm_arr = om2.MVectorArray([om2.MVector(*n) for n in vn])
-    norm_ids = om2.MIntArray(vt[:, 3].tolist())  # vn_id 列
-    mfn.setVertexNormals(norm_arr, norm_ids)
+    # ---------- 5. 法线 (关键新增部分) ----------
+    # norm_coords = [om2.MVector(*vn[i]) for i in vt[:, 3]]  # 每行第4列是法线索引
+    # norm_arr    = om2.MVectorArray(norm_coords)
+    # face_ids   = om2.MIntArray(vt[:, 0].tolist())  # 每行第1列：面 ID
+    # vertex_ids = om2.MIntArray(vt[:, 1].tolist())  # 每行第2列：顶点 ID
+    # mfn.setFaceVertexNormals(norm_arr, face_ids, vertex_ids, space=om2.MSpace.kObject)
+    
+    # ---------- 6. 改名 + 默认材质 ----------
+    dag   = om2.MDagPath.getAPathTo(mobj)
+    final = cmds.rename(dag.fullPathName(), name)
+    assign_lambert_to_mesh(final)
+    cmds.select(final)
+    return final
 
-    # 7. 改名
-    new_tf = om2.MFnTransform(mesh_obj).name()   # 拿到 transform 节点
-    cmds.rename(new_tf, name)
-    cmds.select(new_tf, r=True)
-    return new_tf
 # --------------------------------------------------
 # 7. 直接运行测试
 # --------------------------------------------------
@@ -315,8 +323,9 @@ if __name__ == "__main__":
         # merged_vn = np.load('E:/Code/python/MayaPoseMatcher/debugUse/merged_vn.npy')
         # overlap_idx1 = np.load('E:/Code/python/MayaPoseMatcher/debugUse/overlap_idx1.npy')
 
-        # build_mesh_from_numpy(merged_v,merged_uv,merged_f, merged_vn, name='MyMergedMesh')
+        build_mesh_from_numpy(merged_v,merged_uv,merged_f, merged_vn, name='MyMergedMesh')
 
-        writeWithColor(merged_f,merged_v,merged_uv,merged_vn, overlap_idx1.tolist(), "E:/Code/python/MayaPoseMatcher/debugUse/merged.obj")
+        # writeWithColor(merged_f,merged_v,merged_uv,merged_vn, overlap_idx1.tolist(), "E:/Code/python/MayaPoseMatcher/debugUse/merged.obj")
+        # writeWithColor(merged_f,merged_v,merged_uv,merged_vn, [], "E:/Code/python/MayaPoseMatcher/debugUse/merged.obj")
     except RuntimeError as e:
         cmds.warning(str(e))
