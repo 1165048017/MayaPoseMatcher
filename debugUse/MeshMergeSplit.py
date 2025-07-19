@@ -3,9 +3,10 @@
 #  Maya 2022+  Python 3
 # ------------------------------------------------------------
 import maya.cmds as cmds
-import maya.api.OpenMaya as om2
+import maya.api.OpenMaya as om
 import numpy as np
 import math
+import json
 from typing import Tuple, List
 
 
@@ -20,17 +21,17 @@ def get_mesh_arrays_fast(transform_path: str):
         vt       : np.ndarray (K,4)  face-vertex 映射
                      [face_id, vert_id, uv_id, vn_id]
     """
-    sel = om2.MSelectionList()
+    sel = om.MSelectionList()
     sel.add(transform_path)
     dag = sel.getDagPath(0)
     dag.extendToShape()
-    if dag.apiType() != om2.MFn.kMesh:
+    if dag.apiType() != om.MFn.kMesh:
         raise RuntimeError(f"{transform_path} 不是多边形网格。")
 
-    mesh = om2.MFnMesh(dag)
+    mesh = om.MFnMesh(dag)
 
     # 1) 顶点
-    points = mesh.getPoints(om2.MSpace.kWorld)
+    points = mesh.getPoints(om.MSpace.kWorld)
     vertices = np.array([[p.x, p.y, p.z] for p in points], dtype=np.float64)
 
     # 2) UV
@@ -57,16 +58,24 @@ def get_mesh_arrays_fast(transform_path: str):
 # --------------------------------------------------
 # 2. 获取所有选中模型
 # --------------------------------------------------
-def get_selected_meshes_numpy() -> List[Tuple[str, np.ndarray, np.ndarray, np.ndarray]]:
-    sel_list = om2.MGlobal.getActiveSelectionList()
-    if sel_list.isEmpty():
-        raise RuntimeError("请先至少选中一个多边形模型。")
+def get_selected_meshes_numpy(mode="merge") -> List[Tuple[str, np.ndarray, np.ndarray, np.ndarray]]:
+    sel_list = om.MGlobal.getActiveSelectionList()
+    # if sel_list.isEmpty():
+    #     raise RuntimeError("请先至少选中一个多边形模型。")
+    if(mode=="merge"):
+        if sel_list.length() != 2:
+            cmds.confirmDialog(title='Error', message='Please select only two meshes!', icon='critical')
+            raise RuntimeError("Please select only two meshes!")
+    elif(mode=="split"):
+        if sel_list.length() != 1:
+            cmds.confirmDialog(title='Error', message='Please select only one mesh!', icon='critical')
+            raise RuntimeError("Please select only onetwo mesh!")
 
     results = []
     for i in range(sel_list.length()):
         dag = sel_list.getDagPath(i)
         dag.extendToShape()
-        if dag.apiType() != om2.MFn.kMesh:
+        if dag.apiType() != om.MFn.kMesh:
             continue
         name = sel_list.getDagPath(i).fullPathName()
         v, u, vn, vt = get_mesh_arrays_fast(name)
@@ -233,12 +242,25 @@ def ProcessFaces(mesh1_f,mesh2_f,map_v,map_uv,map_vn):
     cmds.progressWindow(endProgress=True)
     return merged_f
 
-
 def MergeMeshes(mesh1_f,mesh2_f,mesh1_v,mesh2_v,mesh1_uv,mesh2_uv,mesh1_vn,mesh2_vn,overlap1,overlap2):
     merged_v, map_v = ProcessVertices(mesh1_v,mesh2_v,overlap1,overlap2)
     merged_uv, map_uv = ProcessUV(mesh1_uv,mesh2_uv)
     merged_vn, map_vn = ProcessVN(mesh1_vn,mesh2_vn)
     merged_f = ProcessFaces(mesh1_f,mesh2_f,map_v,map_uv,map_vn)
+
+    json_data = {}
+    json_data["num_vertices_mesh1"] = mesh1_v.shape[0]
+    json_data["num_vertices_mesh2"] = mesh2_v.shape[0]
+    json_data["overlap1"] = overlap1.tolist()
+    json_data["overlap2"] = overlap2.tolist()
+    json_data["uv_mesh1"] = mesh1_uv.tolist()
+    json_data["uv_mesh2"] = mesh2_uv.tolist()
+    json_data["faces_mesh1"] = mesh1_f.tolist()
+    json_data["faces_mesh2"] = mesh2_f.tolist()
+    # 写入 JSON 文件
+    with open("E:/Code/python/MayaPoseMatcher/debugUse/output.json", "w", encoding="utf-8") as f:
+        json.dump(json_data, f, indent=4)
+
     return merged_f, merged_v,merged_uv,merged_vn
 
 def assign_lambert_to_mesh(mesh_transform, color=(0.5, 0.5, 0.5)):
@@ -259,73 +281,100 @@ def build_mesh_from_numpy(v, uv, vt, vn, name='newMesh'):
     vn  : (P,3)  float   顶点级法线
     """
     # ---------- 1. 顶点 ----------
-    points = om2.MPointArray([om2.MPoint(*p) for p in v])
+    points = om.MPointArray([om.MPoint(*p) for p in v])
 
     # ---------- 2. face_counts & 所有 per-face-vertex 索引 ----------
     face_ids = vt[:, 0]
     unique, counts = np.unique(face_ids, return_counts=True)
-    face_counts   = om2.MIntArray(counts.tolist())
-    face_connects = om2.MIntArray(vt[:, 1].tolist())
-    uv_ids        = om2.MIntArray(vt[:, 2].tolist())
-    norm_coords   = [om2.MVector(*vn[i]) for i in vt[:, 3]]
-    norm_arr      = om2.MVectorArray(norm_coords)  # 预先生成法线数组
+    face_counts   = om.MIntArray(counts.tolist())
+    face_connects = om.MIntArray(vt[:, 1].tolist())
+    uv_ids        = om.MIntArray(vt[:, 2].tolist())
+    norm_coords   = [om.MVector(*vn[i]) for i in vt[:, 3]]
+    norm_arr      = om.MVectorArray(norm_coords)  # 预先生成法线数组
 
     # ---------- 3. 创建 mesh ----------
-    mfn = om2.MFnMesh()
+    mfn = om.MFnMesh()
     mobj = mfn.create(points, face_counts, face_connects)
 
     # ---------- 4. UV ----------
-    u_arr = om2.MFloatArray(uv[:, 0].tolist())
-    v_arr = om2.MFloatArray(uv[:, 1].tolist())
+    u_arr = om.MFloatArray(uv[:, 0].tolist())
+    v_arr = om.MFloatArray(uv[:, 1].tolist())
     mfn.setUVs(u_arr, v_arr)
     mfn.assignUVs(face_counts, uv_ids)
 
     # ---------- 5. 法线 (关键新增部分) ----------
-    # norm_coords = [om2.MVector(*vn[i]) for i in vt[:, 3]]  # 每行第4列是法线索引
-    # norm_arr    = om2.MVectorArray(norm_coords)
-    # face_ids   = om2.MIntArray(vt[:, 0].tolist())  # 每行第1列：面 ID
-    # vertex_ids = om2.MIntArray(vt[:, 1].tolist())  # 每行第2列：顶点 ID
-    # mfn.setFaceVertexNormals(norm_arr, face_ids, vertex_ids, space=om2.MSpace.kObject)
+    # norm_coords = [om.MVector(*vn[i]) for i in vt[:, 3]]  # 每行第4列是法线索引
+    # norm_arr    = om.MVectorArray(norm_coords)
+    # face_ids   = om.MIntArray(vt[:, 0].tolist())  # 每行第1列：面 ID
+    # vertex_ids = om.MIntArray(vt[:, 1].tolist())  # 每行第2列：顶点 ID
+    # mfn.setFaceVertexNormals(norm_arr, face_ids, vertex_ids, space=om.MSpace.kObject)
     
     # ---------- 6. 改名 + 默认材质 ----------
-    dag   = om2.MDagPath.getAPathTo(mobj)
+    dag   = om.MDagPath.getAPathTo(mobj)
     final = cmds.rename(dag.fullPathName(), name)
     assign_lambert_to_mesh(final)
     cmds.select(final)
     return final
 
+def SplitMeshes(jsonPath, merged_v, merged_vn):
+    with open(jsonPath, "r", encoding="utf-8") as f:
+        json_data = json.load(f)          # data 就是原来的 dict
+    mesh1_v_num = np.array(json_data["num_vertices_mesh1"])
+    mesh2_v_num = np.array(json_data["num_vertices_mesh2"])
+    overlap1 = json_data["overlap1"]
+    overlap2 = json_data["overlap2"]
+    mesh1_uv = np.array(json_data["uv_mesh1"])
+    mesh2_uv = np.array(json_data["uv_mesh2"])
+    mesh1_f = np.array(json_data["faces_mesh1"])
+    mesh2_f = np.array(json_data["faces_mesh2"])
+
+    # get mesh1
+    split_v_mesh1 = np.array(merged_v[0:mesh1_v_num,...])
+    split_vn_mesh1 = np.array(merged_vn[0:mesh1_v_num,...])
+    writeWithColor(mesh1_f,split_v_mesh1,mesh1_uv,split_vn_mesh1,[],"E:/Code/python/MayaPoseMatcher/debugUse/split1.obj")
+
+    # get mesh2
+    split_vn_mesh2 = np.array(merged_vn[mesh1_v_num:-1,...])
+    split_v_mesh2 = np.insert(merged_v[mesh1_v_num:-1,...],overlap2,split_v_mesh1[overlap1,...],axis=0)
+    writeWithColor(mesh2_f,split_v_mesh2,mesh2_uv,split_vn_mesh2,overlap2,"E:/Code/python/MayaPoseMatcher/debugUse/split2.obj")
+
 # --------------------------------------------------
 # 7. 直接运行测试
 # --------------------------------------------------
 if __name__ == "__main__":
+    current_mode = "split" #"merge" #
     try:
-        meshes = get_selected_meshes_numpy()
-        if len(meshes) != 2:
-            raise RuntimeError("请只选中两个多边形模型。")
+        meshes = get_selected_meshes_numpy(current_mode)
+        # if len(meshes) != 2:
+        #     raise RuntimeError("请只选中两个多边形模型。")
+        if(current_mode=="merge"):
+            name1, v1, uv1,vn1, vt1 = meshes[0]
+            name2, v2, uv2,vn2, vt2 = meshes[1]
+            
+            name1, name2, overlap_idx1, overlap_idx2 = detect_and_select_overlaps(decimals=3)
+            select_vertices(name1, overlap_idx1)
+            # select_vertices(name2, idx2)
+            merged_f, merged_v,merged_uv,merged_vn = MergeMeshes(vt1,vt2,v1,v2,uv1,uv2,vn1,vn2,overlap_idx1,overlap_idx2)
+            
+            # np.save('E:/Code/python/MayaPoseMatcher/debugUse/merged_f.npy',merged_f)
+            # np.save('E:/Code/python/MayaPoseMatcher/debugUse/merged_v.npy',merged_v)
+            # np.save('E:/Code/python/MayaPoseMatcher/debugUse/merged_uv.npy',merged_uv)
+            # np.save('E:/Code/python/MayaPoseMatcher/debugUse/merged_vn.npy',merged_vn)
+            # np.save('E:/Code/python/MayaPoseMatcher/debugUse/overlap_idx1.npy',overlap_idx1)
 
-        name1, v1, uv1,vn1, vt1 = meshes[0]
-        name2, v2, uv2,vn2, vt2 = meshes[1]
+            # merged_f = np.load('E:/Code/python/MayaPoseMatcher/debugUse/merged_f.npy')
+            # merged_v = np.load('E:/Code/python/MayaPoseMatcher/debugUse/merged_v.npy')
+            # merged_uv = np.load('E:/Code/python/MayaPoseMatcher/debugUse/merged_uv.npy')
+            # merged_vn = np.load('E:/Code/python/MayaPoseMatcher/debugUse/merged_vn.npy')
+            # overlap_idx1 = np.load('E:/Code/python/MayaPoseMatcher/debugUse/overlap_idx1.npy')
+
+            build_mesh_from_numpy(merged_v,merged_uv,merged_f, merged_vn, name='MyMergedMesh')
+
+            # writeWithColor(merged_f,merged_v,merged_uv,merged_vn, overlap_idx1.tolist(), "E:/Code/python/MayaPoseMatcher/debugUse/merged.obj")
+            # writeWithColor(merged_f,merged_v,merged_uv,merged_vn, [], "E:/Code/python/MayaPoseMatcher/debugUse/merged.obj")
+        elif(current_mode=="split"):
+            name, v, uv, vn, vt = meshes[0]
+            SplitMeshes("E:/Code/python/MayaPoseMatcher/debugUse/output.json", v,vn)
         
-        name1, name2, overlap_idx1, overlap_idx2 = detect_and_select_overlaps(decimals=3)
-        select_vertices(name1, overlap_idx1)
-        # select_vertices(name2, idx2)
-        merged_f, merged_v,merged_uv,merged_vn = MergeMeshes(vt1,vt2,v1,v2,uv1,uv2,vn1,vn2,overlap_idx1,overlap_idx2)
-        
-        # np.save('E:/Code/python/MayaPoseMatcher/debugUse/merged_f.npy',merged_f)
-        # np.save('E:/Code/python/MayaPoseMatcher/debugUse/merged_v.npy',merged_v)
-        # np.save('E:/Code/python/MayaPoseMatcher/debugUse/merged_uv.npy',merged_uv)
-        # np.save('E:/Code/python/MayaPoseMatcher/debugUse/merged_vn.npy',merged_vn)
-        # np.save('E:/Code/python/MayaPoseMatcher/debugUse/overlap_idx1.npy',overlap_idx1)
-
-        # merged_f = np.load('E:/Code/python/MayaPoseMatcher/debugUse/merged_f.npy')
-        # merged_v = np.load('E:/Code/python/MayaPoseMatcher/debugUse/merged_v.npy')
-        # merged_uv = np.load('E:/Code/python/MayaPoseMatcher/debugUse/merged_uv.npy')
-        # merged_vn = np.load('E:/Code/python/MayaPoseMatcher/debugUse/merged_vn.npy')
-        # overlap_idx1 = np.load('E:/Code/python/MayaPoseMatcher/debugUse/overlap_idx1.npy')
-
-        build_mesh_from_numpy(merged_v,merged_uv,merged_f, merged_vn, name='MyMergedMesh')
-
-        # writeWithColor(merged_f,merged_v,merged_uv,merged_vn, overlap_idx1.tolist(), "E:/Code/python/MayaPoseMatcher/debugUse/merged.obj")
-        # writeWithColor(merged_f,merged_v,merged_uv,merged_vn, [], "E:/Code/python/MayaPoseMatcher/debugUse/merged.obj")
     except RuntimeError as e:
         cmds.warning(str(e))

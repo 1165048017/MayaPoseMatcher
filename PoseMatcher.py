@@ -2,10 +2,13 @@ import maya.cmds as cmds
 import maya.api.OpenMaya as om
 import numpy as np
 import math
+from typing import Tuple, List
 import json
 import os
 import re
 
+################################### Pose alignment functions Start ################################### 
+# region pose alignment
 def get_base_name(obj_name):
     """Get the base name of an object (excluding namespace and path)"""
     return obj_name.split(":")[-1].split("|")[-1]
@@ -442,164 +445,6 @@ def sync_selections(*_):
     # Clear the sync flag
     _syncing_selection = False
 
-def create_alignment_ui():
-    """Create the UI window"""
-    win_name = "skeletonAlignmentUI"
-    if cmds.window(win_name, exists=True):
-        cmds.deleteUI(win_name)
-    
-    # Create main window - Fixed size to ensure all content is visible
-    cmds.window(win_name, title="Skeleton Alignment Tool", width=520, height=700, sizeable=False)
-    
-    # Main layout - Vertical column layout
-    main_layout = cmds.columnLayout(
-        adjustableColumn=True,
-        columnAttach=('both', 5),
-        rowSpacing=10,
-        height=690
-    )
-    
-    # ================ set skeleton ================
-    skeleton_frame = cmds.frameLayout(
-        label="Skeleton Settings",
-        collapsable=True,
-        borderStyle="etchedIn",
-        marginWidth=5,
-        marginHeight=5
-    )
-    
-    # MetaHuman root joint
-    cmds.gridLayout(numberOfColumns=3, cellWidth=170)
-    cmds.text(label="MetaHuman Root:", align="right")
-    mh_root_field = cmds.textField("mhRootField", width=120)
-    cmds.button(
-        label="Get Selected", 
-        annotation="Select MetaHuman root joint and click",
-        command=lambda *_: cmds.textField(
-            mh_root_field, 
-            e=True, 
-            text=cmds.ls(selection=True)[0] if cmds.ls(selection=True) else ""
-        )
-    )
-    cmds.setParent("..")
-    
-    # DAZ root joint
-    cmds.gridLayout(numberOfColumns=3, cellWidth=170)
-    cmds.text(label="DAZ Root Joint:", align="right")
-    daz_root_field = cmds.textField("dazRootField", width=120)
-    cmds.button(
-        label="Get Selected", 
-        annotation="Select DAZ root joint and click",
-        command=lambda *_: cmds.textField(
-            daz_root_field, 
-            e=True, 
-            text=cmds.ls(selection=True)[0] if cmds.ls(selection=True) else ""
-        )
-    )
-    cmds.setParent("..")
-    
-    # DAZ namepsace
-    cmds.gridLayout(numberOfColumns=3, cellWidth=170)
-    cmds.text(label="DAZ Namespace:", align="right")
-    daz_ns_field = cmds.textField("dazNsField", width=120)
-    cmds.button(
-        label="Auto Detect", 
-        command=lambda *_: auto_detect_ns_cmd()
-    )
-    cmds.setParent("..")
-    cmds.setParent("..")
-    
-    # ================ file ================
-    file_frame = cmds.frameLayout(
-        label="File Settings",
-        collapsable=True,
-        borderStyle="etchedIn",
-        marginWidth=5,
-        marginHeight=5
-    )
-    
-    # JSON file
-    cmds.gridLayout(numberOfColumns=3, cellWidth=170)
-    cmds.text(label="JSON File Path:", align="right")
-    json_path_field = cmds.textField("jsonPathField", width=120)
-    cmds.button(
-        label="Browse...", 
-        command=lambda *_: cmds.textField(
-            json_path_field, 
-            e=True, 
-            text=(cmds.fileDialog2(
-                fileMode=1,
-                fileFilter="JSON Files (*.json)"
-            ) or [""])[0]
-        )
-    )
-    cmds.setParent("..")
-    
-    # file button
-    cmds.gridLayout(numberOfColumns=3, cellWidth=170)
-    cmds.button(label="Load Map", command=lambda *_: load_map_cmd(), height=30)
-    cmds.button(label="Save Map", command=lambda *_: save_map_cmd(), height=30)
-    cmds.button(label="Reset Map", command=reset_table, height=30)
-    cmds.setParent("..")
-    cmds.setParent("..")
-    
-    # ================ joint map ================
-    map_frame = cmds.frameLayout(
-        label="Joint Mapping",
-        collapsable=False,
-        borderStyle="etchedIn",
-        marginWidth=5,
-        marginHeight=5
-    )
-    
-    # row title
-    cmds.gridLayout(numberOfColumns=2, cellWidth=250)
-    cmds.text(label="MetaHuman Joints", align="center", height=20)
-    cmds.text(label="Your Model Joints", align="center", height=20)
-    cmds.setParent("..")
-    
-    # List area - Ensures sufficient height
-    cmds.rowLayout(numberOfColumns=2, height=200)
-    mh_list = cmds.textScrollList("mhJointsList", allowMultiSelection=True, height=200, width=250, selectCommand=sync_selections)
-    daz_list = cmds.textScrollList("dazJointsList", allowMultiSelection=True, height=200, width=250, selectCommand=sync_selections)
-    cmds.setParent("..")
-    
-    # Controll button
-    cmds.gridLayout(numberOfColumns=4, cellWidth=130, cellHeight=30)
-    cmds.button(label="Add Selected", command=lambda *_:add_selected_cmd())
-    cmds.button(label="Remove Selected", command=lambda *_:remove_selected_cmd())
-    cmds.button(label="Auto-Detect All", command=lambda *_:auto_detect_cmd())
-    cmds.button(label="Add Fingers", command=lambda *_:add_finger_mapping())
-    cmds.setParent("..")
-    cmds.setParent("..")
-    
-    # ================ Execute ================
-    cmds.separator(height=10)
-    cmds.button(
-        label="ALIGN SKELETONS", 
-        height=50, 
-        backgroundColor=[0.3, 0.6, 0.8],
-        command=lambda *_: execute_alignment_cmd()
-    )
-
-    # ================ Mesh tool ================    
-    mesh_frame = cmds.frameLayout(
-        label="Mesh utils",
-        collapsable=True,
-        borderStyle="etchedIn",
-        marginWidth=5,
-        marginHeight=5
-    )
-    cmds.gridLayout(numberOfColumns=2, cellWidth=170)
-    cmds.button(label="Merge to one mesh", command=lambda *_: load_map_cmd(), height=30)
-    cmds.button(label="Restore to two meshes", command=lambda *_: save_map_cmd(), height=30)
-    cmds.setParent("..")
-    
-    # initialize
-    reset_table()
-    
-    cmds.showWindow(win_name)
-
 def auto_detect_ns_cmd():
     """Automatically detect and set the DAZ namespace"""
     daz_root = cmds.textField("dazRootField", q=True, text=True)
@@ -847,6 +692,526 @@ def execute_alignment_cmd():
     cmds.refresh(suspend=False)
     cmds.refresh()
     cmds.warning("✅ Done!")
+
+#endregion
+################################### Pose alignment functions End ################################### 
+
+################################### Merge/Split meshes functions Start ################################### 
+#region merge and split meshes
+# --------------------------------------------------
+# 1. 抽取单个模型的顶点 / UV / vt
+# --------------------------------------------------
+def get_mesh_arrays_fast(transform_path: str):
+    """
+    返回:
+        vertices : np.ndarray (N,3)  顶点世界坐标（顶点级）
+        uvs      : np.ndarray (M,2)  UV 坐标（顶点级）
+        vt       : np.ndarray (K,4)  face-vertex 映射
+                     [face_id, vert_id, uv_id, vn_id]
+    """
+    sel = om.MSelectionList()
+    sel.add(transform_path)
+    dag = sel.getDagPath(0)
+    dag.extendToShape()
+    if dag.apiType() != om.MFn.kMesh:
+        raise RuntimeError(f"{transform_path} 不是多边形网格。")
+
+    mesh = om.MFnMesh(dag)
+
+    # 1) 顶点
+    points = mesh.getPoints(om.MSpace.kWorld)
+    vertices = np.array([[p.x, p.y, p.z] for p in points], dtype=np.float64)
+
+    # 2) UV
+    u_array, v_array = mesh.getUVs()
+    uvs = np.column_stack((u_array, v_array)).astype(np.float64)
+
+    # 3) VN
+    normals = np.array(mesh.getNormals())
+
+    # 3) 获取 face-vertex 级索引
+    face_counts, vert_ids = mesh.getVertices()
+    _, uv_ids   = mesh.getAssignedUVs()
+    _, norm_ids = mesh.getNormalIds()
+
+    # face_id 列
+    face_ids = np.repeat(np.arange(len(face_counts), dtype=np.int32), face_counts)
+
+    # 组装 4 列：face_id, vert_id, uv_id, vn_id
+    vt = np.column_stack((face_ids, vert_ids, uv_ids, norm_ids)).astype(np.int32)
+
+    return vertices, uvs, normals, vt
+
+
+# --------------------------------------------------
+# 2. 获取所有选中模型
+# --------------------------------------------------
+def get_selected_meshes_numpy(mode="merge") -> List[Tuple[str, np.ndarray, np.ndarray, np.ndarray]]:
+    sel_list = om.MGlobal.getActiveSelectionList()
+    # if sel_list.isEmpty():
+    #     raise RuntimeError("请先至少选中一个多边形模型。")
+    if(mode=="merge"):
+        if sel_list.length() != 2:
+            cmds.confirmDialog(title='Error', message='Please select only two meshes!', icon='critical')
+            raise RuntimeError("Please select only two meshes!")
+    elif(mode=="split"):
+        if sel_list.length() != 2:
+            cmds.confirmDialog(title='Error', message='Please select only one mesh!', icon='critical')
+            raise RuntimeError("Please select only onetwo mesh!")
+
+    results = []
+    for i in range(sel_list.length()):
+        dag = sel_list.getDagPath(i)
+        dag.extendToShape()
+        if dag.apiType() != om.MFn.kMesh:
+            continue
+        name = sel_list.getDagPath(i).fullPathName()
+        v, u, vn, vt = get_mesh_arrays_fast(name)
+        results.append((name, v, u, vn, vt))
+
+    if not results:
+        raise RuntimeError("选中的节点里没有任何多边形网格。")
+
+    return results
+
+
+# --------------------------------------------------
+# 3. 重合顶点检测
+# --------------------------------------------------
+def find_overlaps(a: np.ndarray,
+                  b: np.ndarray,
+                  decimals: int = 3) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    返回:
+        coords : (L,3) 重合坐标
+        idx_a  : (L,)  在 a 中的行索引
+        idx_b  : (L,)  在 b 中的行索引
+    """
+    a = np.asarray(a, dtype=float).reshape(-1, 3)
+    b = np.asarray(b, dtype=float).reshape(-1, 3)
+
+    a_r = np.round(a, decimals)
+    b_r = np.round(b, decimals)
+
+    a_view = a_r.view([('', a.dtype)] * 3)
+    b_view = b_r.view([('', b.dtype)] * 3)
+
+    _, idx_a, idx_b = np.intersect1d(
+        a_view, b_view, assume_unique=False, return_indices=True
+    )
+    return a[idx_a], idx_a, idx_b
+
+
+# --------------------------------------------------
+# 4. Maya 场景内选中指定顶点
+# --------------------------------------------------
+def select_vertices(mesh_name: str, indices: np.ndarray):
+    vtx_strings = [f"{mesh_name}.vtx[{i}]" for i in indices]
+    if vtx_strings:
+        cmds.select(vtx_strings, replace=True)
+    else:
+        cmds.select(clear=True)
+
+
+# --------------------------------------------------
+# 5. 一键检测两个选中模型的重合顶点
+# --------------------------------------------------
+def detect_and_select_overlaps(name1,name2,v1,v2,decimals: int = 3):
+    """
+    选中两个模型 → 检测重合顶点 → 在第一个模型上选中它们
+    """
+    _, idx1, idx2 = find_overlaps(v1, v2, decimals=decimals)
+    print(f"共找到 {len(idx1)} 个重合顶点，已在 {name1} 中选中。")
+    return name1, name2, idx1, idx2
+
+# --------------------------------------------------
+# 5. 合并模型
+# --------------------------------------------------
+# 将顶点和面写入obj
+def writeWithColor(f,v,uv,vn,IdxsWithColor,name):
+    fp = open(name[0],'w')
+    for i in range(v.shape[0]):
+        if(IdxsWithColor!=[]):
+            if i in IdxsWithColor:
+                fp.write("v {0} {1} {2} 1 0 0\n".format(v[i,0],v[i,1],v[i,2]))
+            else:
+                fp.write("v {0} {1} {2} 1 1 1\n".format(v[i,0],v[i,1],v[i,2]))
+        else:
+            fp.write("v {0} {1} {2}\n".format(v[i,0],v[i,1],v[i,2]))
+    for i in range(uv.shape[0]):        
+        fp.write("vt {0} {1}\n".format(uv[i,0],uv[i,1]))
+    for i in range(vn.shape[0]):        
+        fp.write("vn {0} {1} {2}\n".format(vn[i,0],vn[i,1],vn[i,2]))
+    curr_fid = -1
+    for i in range(f.shape[0]):
+        if(f[i,0]==curr_fid):
+            fp.write(" {0}/{1}/{2}".format(f[i,1]+1,f[i,2]+1,f[i,3]+1))
+        else:
+            fp.write("\nf {0}/{1}/{2}".format(f[i,1]+1,f[i,2]+1,f[i,3]+1))
+            curr_fid = f[i,0]
+    # for i in range(len(f)):
+    #     for j in range(len(f[i])):
+    #         if(j==0):
+    #             fp.write("f {0} ".format(f[i][j]+1))
+    #         else:
+    #             fp.write("{0} ".format(f[i][j]+1))
+    #         if(j==len(f[i])-1):
+    #             fp.write("\n")       
+    fp.close()
+
+def ProcessVertices(mesh1_v,mesh2_v,overlap1,overlap2):
+    total_v = mesh1_v.copy()
+    map_v = np.array([], dtype=np.int32)
+    for i in range(mesh2_v.shape[0]):
+        if(i not in overlap2):
+            total_v = np.vstack([total_v,mesh2_v[i,...]])
+            map_v = np.hstack([map_v, np.array([total_v.shape[0]-1], dtype=np.int32)])
+        else:
+            indices = np.where(i == overlap2)[0]
+            map_v = np.hstack([map_v,overlap1[indices[0]]])
+    return total_v, map_v
+
+def is_overlap(a, b):
+    """
+    a, b: (x_min, y_min, x_max, y_max)
+    边贴合不算重叠
+    返回 True 表示两矩形严格重叠
+    """
+    ax1, ay1, ax2, ay2 = a
+    bx1, by1, bx2, by2 = b
+
+    # 任一方向不重叠 → 整体不重叠
+    no_overlap_x = ax2 <= bx1 or bx2 <= ax1
+    no_overlap_y = ay2 <= by1 or by2 <= ay1
+
+    # 反推：两个方向都不“不重叠”才重叠
+    return not (no_overlap_x or no_overlap_y)
+
+def ProcessUV(mesh1_uv,mesh2_uv):
+    merged_uv = mesh1_uv.copy()
+    uv1_range = [math.floor(min(mesh1_uv[...,0])), math.floor(min(mesh1_uv[...,1])),math.ceil(max(mesh1_uv[...,0])), math.ceil(max(mesh1_uv[...,1]))]
+    uv2_range = [math.floor(min(mesh2_uv[...,0])), math.floor(min(mesh2_uv[...,1])),math.ceil(max(mesh2_uv[...,0])), math.ceil(max(mesh2_uv[...,1]))]
+    if(is_overlap(uv1_range,uv2_range)):
+        if(uv1_range[0]<uv2_range[0]):
+            mesh2_uv[...,0] += uv1_range[3]-uv2_range[0]
+    merged_uv = np.vstack([mesh1_uv,mesh2_uv])
+    map_uv = np.arange(mesh2_uv.shape[0]) + mesh1_uv.shape[0]
+    return merged_uv, map_uv
+
+def ProcessVN(mesh1_vn,mesh2_vn):
+    return np.vstack([mesh1_vn,mesh2_vn]), np.arange(mesh2_vn.shape[0])+mesh1_vn.shape[0]
+
+def ProcessFaces(mesh1_f,mesh2_f,map_v,map_uv,map_vn):
+    cmds.progressWindow(
+        title='Processing faces...',
+        progress=0,
+        status='0 / %d' % mesh2_f.shape[0],
+        isInterruptable=True
+    )
+
+    merged_f = mesh1_f.copy()
+    for i in range(mesh2_f.shape[0]):
+        # ---- 每帧检查是否用户点了取消 ----
+        if cmds.progressWindow(query=True, isCancelled=True):
+            cmds.warning('用户取消！')
+            break
+
+        cur_face_id = mesh2_f[i,0] + mesh1_f.shape[0]
+        cur_vert_id = map_v[mesh2_f[i,1]]
+        cur_uv_id = map_uv[mesh2_f[i,2]]
+        cur_norm_id = map_vn[mesh2_f[i,3]]
+        merged_f = np.vstack([merged_f,np.column_stack((cur_face_id, cur_vert_id, cur_uv_id, cur_norm_id)).astype(np.int32)])
+
+        # ---- 更新进度 ----
+        percent = float(i + 1) / mesh2_f.shape[0] * 100
+        cmds.progressWindow(edit=True,
+                          progress=percent,
+                          status='%d / %d' % (i + 1, mesh2_f.shape[0]))
+    cmds.progressWindow(endProgress=True)
+    return merged_f
+
+
+def MergeMeshes(mesh1_f,mesh2_f,mesh1_v,mesh2_v,mesh1_uv,mesh2_uv,mesh1_vn,mesh2_vn,overlap1,overlap2):
+    merged_v, map_v = ProcessVertices(mesh1_v,mesh2_v,overlap1,overlap2)
+    merged_uv, map_uv = ProcessUV(mesh1_uv,mesh2_uv)
+    merged_vn, map_vn = ProcessVN(mesh1_vn,mesh2_vn)
+    merged_f = ProcessFaces(mesh1_f,mesh2_f,map_v,map_uv,map_vn)
+
+    json_data = {}
+    json_data["num_vertices_mesh1"] = mesh1_v.shape[0]
+    json_data["num_vertices_mesh2"] = mesh2_v.shape[0]
+    json_data["overlap1"] = overlap1
+    json_data["overlap2"] = overlap2
+    json_data["faces_mesh1"] = mesh1_f.tolist()
+    json_data["faces_mesh2"] = mesh2_f.tolist()
+    # 写入 JSON 文件
+    with open("E:/Code/python/MayaPoseMatcher/debugUse/output.json", "w", encoding="utf-8") as f:
+        json.dump(json_data, f, indent=4)
+
+    return merged_f, merged_v,merged_uv,merged_vn
+
+def assign_lambert_to_mesh(mesh_transform, color=(0.5, 0.5, 0.5)):
+    """给 transform 指定一个 Lambert 材质"""
+    shape = cmds.listRelatives(mesh_transform, s=True, type='mesh')[0]
+    sg = cmds.sets(renderable=True, noSurfaceShader=True, empty=True, name="lambert1SG")
+    lamb = cmds.shadingNode("lambert", asShader=True, name="lambert1")
+    cmds.setAttr(lamb + ".color", *color, type="double3")
+    cmds.connectAttr(lamb + ".outColor", sg + ".surfaceShader", force=True)
+    cmds.sets(shape, edit=True, forceElement=sg)
+
+def build_mesh_from_numpy(v, uv, vt, vn, name='newMesh'):
+    """
+    v   : (N,3)  float   顶点
+    uv  : (M,2)  float   顶点级 UV
+    vt  : (K,4)  int     每行 [face_id, vert_id, uv_id, vn_id]
+                         同一 face_id 连续出现，长度=该面顶点数
+    vn  : (P,3)  float   顶点级法线
+    """
+    # ---------- 1. 顶点 ----------
+    points = om.MPointArray([om.MPoint(*p) for p in v])
+
+    # ---------- 2. face_counts & 所有 per-face-vertex 索引 ----------
+    face_ids = vt[:, 0]
+    unique, counts = np.unique(face_ids, return_counts=True)
+    face_counts   = om.MIntArray(counts.tolist())
+    face_connects = om.MIntArray(vt[:, 1].tolist())
+    uv_ids        = om.MIntArray(vt[:, 2].tolist())
+    norm_coords   = [om.MVector(*vn[i]) for i in vt[:, 3]]
+    norm_arr      = om.MVectorArray(norm_coords)  # 预先生成法线数组
+
+    # ---------- 3. 创建 mesh ----------
+    mfn = om.MFnMesh()
+    mobj = mfn.create(points, face_counts, face_connects)
+
+    # ---------- 4. UV ----------
+    u_arr = om.MFloatArray(uv[:, 0].tolist())
+    v_arr = om.MFloatArray(uv[:, 1].tolist())
+    mfn.setUVs(u_arr, v_arr)
+    mfn.assignUVs(face_counts, uv_ids)
+
+    # ---------- 5. 法线 (关键新增部分) ----------
+    # norm_coords = [om.MVector(*vn[i]) for i in vt[:, 3]]  # 每行第4列是法线索引
+    # norm_arr    = om.MVectorArray(norm_coords)
+    # face_ids   = om.MIntArray(vt[:, 0].tolist())  # 每行第1列：面 ID
+    # vertex_ids = om.MIntArray(vt[:, 1].tolist())  # 每行第2列：顶点 ID
+    # mfn.setFaceVertexNormals(norm_arr, face_ids, vertex_ids, space=om.MSpace.kObject)
+    
+    # ---------- 6. 改名 + 默认材质 ----------
+    dag   = om.MDagPath.getAPathTo(mobj)
+    final = cmds.rename(dag.fullPathName(), name)
+    assign_lambert_to_mesh(final)
+    cmds.select(final)
+    return final
+
+# -------------------------------------------------
+# 读文件
+# -------------------------------------------------
+def read_txt(filePath):
+    if not os.path.isfile(filePath):
+        cmds.warning("文件不存在：{}".format(filePath))
+        return
+    with open(filePath, "r") as f:
+        data = f.read()
+    # 这里只是简单地打印出来，你可以把 data 用到任何地方
+    print(">>> 读取内容：")
+    print(data)
+
+# -------------------------------------------------
+# 写文件（导出）
+# -------------------------------------------------
+# 全局变量，存一下上次选的路径，可省略
+g_lastPath = cmds.workspace(q=True, rootDirectory=True)
+def MergeMeshes_cmd():
+    global g_lastPath
+
+    meshes = get_selected_meshes_numpy("merge")        
+    filePath = cmds.fileDialog2(fileMode=0,  # 0 = 保存路径
+                            startingDirectory=g_lastPath,
+                            fileFilter="obj Files (*.obj);;All Files (*)")
+    if filePath:
+        g_lastPath = os.path.dirname(filePath[0])
+
+        name1, v1, uv1,vn1, vt1 = meshes[0]
+        name2, v2, uv2,vn2, vt2 = meshes[1]
+
+        name1, name2, overlap_idx1, overlap_idx2 = detect_and_select_overlaps(name1,name2,v1,v2,decimals=3)
+        select_vertices(name1, overlap_idx1)
+        # select_vertices(name2, idx2)
+        merged_f, merged_v,merged_uv,merged_vn = MergeMeshes(vt1,vt2,v1,v2,uv1,uv2,vn1,vn2,overlap_idx1,overlap_idx2)
+        build_mesh_from_numpy(merged_v,merged_uv,merged_f, merged_vn, name='MergedMesh')
+        writeWithColor(merged_f,merged_v,merged_uv,merged_vn, [], filePath)
+
+# -------------------------------------------------
+# 弹窗：让用户选 txt，然后决定读还是写
+# -------------------------------------------------
+def SplitMeshes_cmd():
+    global g_lastPath
+    path = cmds.fileDialog2(fileMode=1,  # 1 = 单选已存在文件
+                            startingDirectory=g_lastPath,
+                            fileFilter="obj Files (*.obj);;All Files (*)")
+    if path:
+        g_lastPath = os.path.dirname(path[0])
+        read_txt(path[0])
+        
+#endregion
+################################### Merge/Split meshes functions End ################################### 
+def create_alignment_ui():
+    """Create the UI window"""
+    win_name = "skeletonAlignmentUI"
+    if cmds.window(win_name, exists=True):
+        cmds.deleteUI(win_name)
+    
+    # Create main window - Fixed size to ensure all content is visible
+    cmds.window(win_name, title="Skeleton Alignment Tool", width=520, height=700, sizeable=False)
+    
+    # Main layout - Vertical column layout
+    main_layout = cmds.columnLayout(
+        adjustableColumn=True,
+        columnAttach=('both', 5),
+        rowSpacing=10,
+        height=690
+    )
+    
+    # ================ set skeleton ================
+    skeleton_frame = cmds.frameLayout(
+        label="Skeleton Settings",
+        collapsable=True,
+        borderStyle="etchedIn",
+        marginWidth=5,
+        marginHeight=5
+    )
+    
+    # MetaHuman root joint
+    cmds.gridLayout(numberOfColumns=3, cellWidth=170)
+    cmds.text(label="MetaHuman Root:", align="right")
+    mh_root_field = cmds.textField("mhRootField", width=120)
+    cmds.button(
+        label="Get Selected", 
+        annotation="Select MetaHuman root joint and click",
+        command=lambda *_: cmds.textField(
+            mh_root_field, 
+            e=True, 
+            text=cmds.ls(selection=True)[0] if cmds.ls(selection=True) else ""
+        )
+    )
+    cmds.setParent("..")
+    
+    # DAZ root joint
+    cmds.gridLayout(numberOfColumns=3, cellWidth=170)
+    cmds.text(label="DAZ Root Joint:", align="right")
+    daz_root_field = cmds.textField("dazRootField", width=120)
+    cmds.button(
+        label="Get Selected", 
+        annotation="Select DAZ root joint and click",
+        command=lambda *_: cmds.textField(
+            daz_root_field, 
+            e=True, 
+            text=cmds.ls(selection=True)[0] if cmds.ls(selection=True) else ""
+        )
+    )
+    cmds.setParent("..")
+    
+    # DAZ namepsace
+    cmds.gridLayout(numberOfColumns=3, cellWidth=170)
+    cmds.text(label="DAZ Namespace:", align="right")
+    daz_ns_field = cmds.textField("dazNsField", width=120)
+    cmds.button(
+        label="Auto Detect", 
+        command=lambda *_: auto_detect_ns_cmd()
+    )
+    cmds.setParent("..")
+    cmds.setParent("..")
+    
+    # ================ file ================
+    file_frame = cmds.frameLayout(
+        label="File Settings",
+        collapsable=True,
+        borderStyle="etchedIn",
+        marginWidth=5,
+        marginHeight=5
+    )
+    
+    # JSON file
+    cmds.gridLayout(numberOfColumns=3, cellWidth=170)
+    cmds.text(label="JSON File Path:", align="right")
+    json_path_field = cmds.textField("jsonPathField", width=120)
+    cmds.button(
+        label="Browse...", 
+        command=lambda *_: cmds.textField(
+            json_path_field, 
+            e=True, 
+            text=(cmds.fileDialog2(
+                fileMode=1,
+                fileFilter="JSON Files (*.json)"
+            ) or [""])[0]
+        )
+    )
+    cmds.setParent("..")
+    
+    # file button
+    cmds.gridLayout(numberOfColumns=3, cellWidth=170)
+    cmds.button(label="Load Map", command=lambda *_: load_map_cmd(), height=30)
+    cmds.button(label="Save Map", command=lambda *_: save_map_cmd(), height=30)
+    cmds.button(label="Reset Map", command=reset_table, height=30)
+    cmds.setParent("..")
+    cmds.setParent("..")
+    
+    # ================ joint map ================
+    map_frame = cmds.frameLayout(
+        label="Joint Mapping",
+        collapsable=False,
+        borderStyle="etchedIn",
+        marginWidth=5,
+        marginHeight=5
+    )
+    
+    # row title
+    cmds.gridLayout(numberOfColumns=2, cellWidth=250)
+    cmds.text(label="MetaHuman Joints", align="center", height=20)
+    cmds.text(label="Your Model Joints", align="center", height=20)
+    cmds.setParent("..")
+    
+    # List area - Ensures sufficient height
+    cmds.rowLayout(numberOfColumns=2, height=200)
+    mh_list = cmds.textScrollList("mhJointsList", allowMultiSelection=True, height=200, width=250, selectCommand=sync_selections)
+    daz_list = cmds.textScrollList("dazJointsList", allowMultiSelection=True, height=200, width=250, selectCommand=sync_selections)
+    cmds.setParent("..")
+    
+    # Controll button
+    cmds.gridLayout(numberOfColumns=4, cellWidth=130, cellHeight=30)
+    cmds.button(label="Add Selected", command=lambda *_:add_selected_cmd())
+    cmds.button(label="Remove Selected", command=lambda *_:remove_selected_cmd())
+    cmds.button(label="Auto-Detect All", command=lambda *_:auto_detect_cmd())
+    cmds.button(label="Add Fingers", command=lambda *_:add_finger_mapping())
+    cmds.setParent("..")
+    cmds.setParent("..")
+    
+    # ================ Execute ================
+    cmds.separator(height=10)
+    cmds.button(
+        label="ALIGN SKELETONS", 
+        height=50, 
+        backgroundColor=[0.3, 0.6, 0.8],
+        command=lambda *_: execute_alignment_cmd()
+    )
+
+    # ================ Mesh tool ================    
+    mesh_frame = cmds.frameLayout(
+        label="Mesh utils",
+        collapsable=True,
+        borderStyle="etchedIn",
+        marginWidth=5,
+        marginHeight=5
+    )
+    cmds.gridLayout(numberOfColumns=2, cellWidth=170)
+    cmds.button(label="Merge to one mesh", command=lambda *_: MergeMeshes_cmd(), height=30)
+    cmds.button(label="Restore to two meshes", command=lambda *_: SplitMeshes_cmd(), height=30)
+    cmds.setParent("..")
+    
+    # initialize
+    reset_table()
+    
+    cmds.showWindow(win_name)
 
 # Start the UI
 if __name__ == "__main__":
