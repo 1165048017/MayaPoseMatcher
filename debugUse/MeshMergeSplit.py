@@ -253,6 +253,7 @@ def MergeMeshes(mesh1_f,mesh2_f,mesh1_v,mesh2_v,mesh1_uv,mesh2_uv,mesh1_vn,mesh2
     json_data["num_vertices_mesh2"] = mesh2_v.shape[0]
     json_data["overlap1"] = overlap1.tolist()
     json_data["overlap2"] = overlap2.tolist()
+    json_data["map_v"] = map_v.tolist()
     json_data["uv_mesh1"] = mesh1_uv.tolist()
     json_data["uv_mesh2"] = mesh2_uv.tolist()
     json_data["faces_mesh1"] = mesh1_f.tolist()
@@ -323,6 +324,7 @@ def SplitMeshes(jsonPath, merged_v, merged_vn):
     mesh2_v_num = np.array(json_data["num_vertices_mesh2"])
     overlap1 = json_data["overlap1"]
     overlap2 = json_data["overlap2"]
+    map_v = json_data["map_v"]
     mesh1_uv = np.array(json_data["uv_mesh1"])
     mesh2_uv = np.array(json_data["uv_mesh2"])
     mesh1_f = np.array(json_data["faces_mesh1"])
@@ -335,7 +337,7 @@ def SplitMeshes(jsonPath, merged_v, merged_vn):
 
     # get mesh2
     split_vn_mesh2 = np.array(merged_vn[mesh1_v_num:-1,...])
-    split_v_mesh2 = np.insert(merged_v[mesh1_v_num:-1,...],overlap2,split_v_mesh1[overlap1,...],axis=0)
+    split_v_mesh2 = merged_v[map_v,...]
     writeWithColor(mesh2_f,split_v_mesh2,mesh2_uv,split_vn_mesh2,overlap2,"E:/Code/python/MayaPoseMatcher/debugUse/split2.obj")
 
 # --------------------------------------------------
