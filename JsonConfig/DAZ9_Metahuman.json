@@ -28,5 +28,7 @@
     "calf_r": "r_shin",
     "foot_r": "r_foot",
     "calf_l": "l_shin",
-    "foot_l": "l_foot"
+    "foot_l": "l_foot",
+    "head": "neck2",
+    "FACIAL_C_FacialRoot": "head"
 }
