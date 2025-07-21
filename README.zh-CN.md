@@ -7,6 +7,9 @@
 ![PoseMatcher](Images/PoseMatcher_Preview.png)
 PoseMatcher 是一款姿态对齐工具，当前主要用于将非 Metahuman 的人形角色对齐到默认 Metahuman 姿态。已在 DAZ8、DAZ9 及 Mixamo 模型上测试通过。
 
+对自定义metahuman比较有帮助 \
+![Result](Images/PoseMatcher_Result.png)
+
 # 使用方法  
 1. 将脚本 PoseMatcher.py 复制到 Maya 并以 Python 脚本形式运行。
 2. 在弹出的 UI 窗口中，分别指定 Metahuman 与 DAZ 模型的根关节。
@@ -29,6 +32,4 @@ PoseMatcher 是一款姿态对齐工具，当前主要用于将非 Metahuman 的
 2. 自动检测功能极不稳定，请尽量避免使用。
 3. 请不要直接将FBX拖入maya，请使用maya的导入按钮并且注意使用命名空间 \
 ![ImportNote](Images/MayaImport.png)
-4. 不要导入相同的骨骼，尤其是daz \
-![SameSkeleton](Images/AvoidSameSkeleton.png)
-5. 如果遇到错误"Wrong number or type of arguments for overloaded function 'new_MVector'". 关闭工具窗口，重新运行脚本即可。
+4. 如果遇到错误"Wrong number or type of arguments for overloaded function 'new_MVector'". 关闭工具窗口，重新运行脚本即可。
