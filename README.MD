@@ -7,6 +7,9 @@
 ![PoseMatcher](Images/PoseMatcher_Preview.png)
 PoseMatcher is a tool for pose alignment, currently focused on aligning non-Metahuman humanoid characters to the default Metahuman pose. It has been tested with DAZ8, DAZ9, and Mixamo models.
 
+It is helpful for customizing methuman \
+![Result](Images/PoseMatcher_Result.png)
+
 # Usage  
 1. Copy the script **PoseMatcher.py** into your Maya and run it as a Python script.  
 2. In the UI window, specify the root joints of the Metahuman and DAZ models.  
