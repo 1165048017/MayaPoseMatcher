@@ -15,16 +15,16 @@ PoseMatcher 是一款姿态对齐工具，当前主要用于将非 Metahuman 的
 5. 点击 Load Map。
 6. 点击 ALIGN SKELETONS 进行对齐。
 
-# Troubleshooting  
+# 问题
 若出现 “numpy not found” 错误，请通过 mayapy 安装：
 ```
 "C:\Program Files\Autodesk\Maya2025\bin\mayapy.exe" -m pip install numpy
 ```
 
-# License  
+# 版权
 代码可自由修改与分发。若用于商业用途，请先与我联系。
 
-# Note
+# 注意
 1. 请仔细检查映射 Metahuman 与你模型关节的 JSON 文件。
 2. 自动检测功能极不稳定，请尽量避免使用。
 3. 请不要直接将FBX拖入maya，请使用maya的导入按钮并且注意使用命名空间
