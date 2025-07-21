@@ -27,7 +27,7 @@ PoseMatcher 是一款姿态对齐工具，当前主要用于将非 Metahuman 的
 # 注意
 1. 请仔细检查映射 Metahuman 与你模型关节的 JSON 文件。
 2. 自动检测功能极不稳定，请尽量避免使用。
-3. 请不要直接将FBX拖入maya，请使用maya的导入按钮并且注意使用命名空间
+3. 请不要直接将FBX拖入maya，请使用maya的导入按钮并且注意使用命名空间 \
 ![ImportNote](Images/MayaImport.png)
-4. 不要导入相同的骨骼，尤其是daz
+4. 不要导入相同的骨骼，尤其是daz \
 ![SameSkeleton](Images/AvoidSameSkeleton.png)
