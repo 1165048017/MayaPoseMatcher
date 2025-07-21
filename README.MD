@@ -31,3 +31,4 @@ You may modify and distribute the code freely. For commercial use, please contac
 ![ImportNote](Images/MayaImport.png)
 4. Avoid importing the same skeleton specially for DAZ model \
 ![SameSkeleton](Images/AvoidSameSkeleton.png)
+5. If you get error "Wrong number or type of arguments for overloaded function 'new_MVector'". Please simply close the Windows of the Tool and run the script again.

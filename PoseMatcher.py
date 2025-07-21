@@ -93,12 +93,9 @@ def get_joint_global_lra(joint, length=100.0):
 def findClose0or180(angles):
     newAngles= []
     for angle in angles:
-        print(angle)
         newAngles.append(min(angle,180-abs(angle)))
-    print(newAngles)
     min_value = min(newAngles)  # find the minimize value
     min_index = newAngles.index(min_value)  # find the minimize value's index
-    print(min_index)
     return min_index
 
 def getAimUpVector(joint_name, boneDir):
@@ -108,16 +105,12 @@ def getAimUpVector(joint_name, boneDir):
     angle_z = calculate_angle_3d(np.array(lraVec[2]),np.array(boneDir))
     axis = [[1,0,0],[0,1,0],[0,0,1]]
     angles = [angle_x, angle_y, angle_z]
-    print("angles:")
-    print(angles)
     min_index = findClose0or180(angles)
     sign = 1
     if(angles[min_index]>180-abs(angles[min_index])):
         sign = -1
     
     aimVector = [sign*axis[min_index][0],sign*axis[min_index][1],sign*axis[min_index][2]]
-    print(f"{joint_name} aim vector:")
-    print(aimVector)
     return [aimVector, axis[(min_index+1)%3]]
 
 def rotate_joint_to_direction(joint_name,aimVector,target_direction):
@@ -254,18 +247,19 @@ def align_parent_to_vector(child_joint, target_vector):
     cmds.setAttr(parent_joint + '.rotateZ', math.degrees(ordered_euler[2]))
 
 def find_joint_by_base_name(base_name, root_joint):
-    """Find joints with the same base name under the specified root joint."""
-    all_joints = cmds.listRelatives(root_joint, allDescendents=True, type="joint") or []
-    all_joints.append(root_joint)
+    """Find joints with the same base name under the specified root joint and return full path."""
+    all_joints = cmds.listRelatives(root_joint, allDescendents=True, type="joint", fullPath=True) or []
+    all_joints.append(cmds.ls(root_joint, long=True)[0])
     
     for joint in all_joints:
-        if get_base_name(joint) == base_name:
+        short_name = get_base_name(joint)
+        if short_name == base_name:
             return joint
     return None
 
 def get_joint_direction(joint_name):
     """Get the direction vector of the joint relative to its parent joint."""
-    parent = cmds.listRelatives(joint_name, parent=True)
+    parent = cmds.listRelatives(joint_name, parent=True, fullPath=True)
     
     if not parent:
         return [0, 0, 0]
@@ -306,9 +300,11 @@ def align_skeleton(joint_map, mh_root, daz_root):
 
     for mh_joint_name, daz_joint_name in joint_map.items():
         daz_joint = find_joint_by_base_name(daz_joint_name, daz_root)
-        parent = cmds.listRelatives(daz_joint, parent=True)
+        parent = cmds.listRelatives(daz_joint, parent=True, fullPath=True)
         joint_aim_map[parent[0]] = getAimUpVector(parent[0],get_joint_direction(daz_joint))[0]
         joint_local_rot[parent[0]] = getlocalRotation(parent[0])
+
+    
 
     for mh_joint_name, daz_joint_name in joint_map.items():
         # Find MetaHuman joints.
@@ -319,14 +315,14 @@ def align_skeleton(joint_map, mh_root, daz_root):
             continue
             
         # Find DAZ joints.
-        daz_joint = find_joint_by_base_name(daz_joint_name, daz_root)
+        daz_joint = find_joint_by_base_name(daz_joint_name, daz_root)        
         if not daz_joint:
             cmds.warning(f"⚠️ DAZ joint '{daz_joint_name}' not found under root '{get_base_name(daz_root)}'")
             error_joints.append(daz_joint_name)
             continue
         
         # Get the DAZ parent joint.
-        daz_parents = cmds.listRelatives(daz_joint, parent=True)
+        daz_parents = cmds.listRelatives(daz_joint, parent=True, fullPath=True)
         if not daz_parents:
             cmds.warning(f"⚠️ DAZ joint '{get_base_name(daz_joint)}' has no parent")
             continue
@@ -453,7 +449,7 @@ def auto_detect_ns_cmd():
         cmds.warning("⚠️ Set the DAZ root joint first")
         return
     
-    all_joints = cmds.listRelatives(daz_root, allDescendents=True, type="joint") or []
+    all_joints = cmds.listRelatives(daz_root, allDescendents=True, type="joint", fullPath=True) or []
     all_joints.append(daz_root)
     
     ns = auto_detect_namespace(all_joints)
@@ -772,7 +768,6 @@ def get_selected_meshes_numpy(mode="merge") -> List[Tuple[str, np.ndarray, np.nd
     if not results:
         raise RuntimeError("选中的节点里没有任何多边形网格。")
 
-    print(name,vn.shape[0])
     return results
 
 
@@ -988,8 +983,6 @@ def SplitMeshes(mesh_name,jsonPath, merged_v, merged_vn):
     # get mesh1
     split_v_mesh1 = np.array(merged_v[0:mesh1_v_num,...])
     split_vn_mesh1 = np.array(merged_vn[0:mesh1_v_num,...])
-    print(os.path.dirname(jsonPath))
-    print(os.path.dirname(jsonPath)+"/"+mesh_name+"_Part1.obj")
     writeWithColor(mesh1_f,split_v_mesh1,mesh1_uv,split_vn_mesh1,[],os.path.dirname(jsonPath)+"/"+mesh_name.replace(":","_")+"_Part1.obj")
     build_mesh_from_numpy(split_v_mesh1,mesh1_uv,mesh1_f,split_vn_mesh1,mesh_name+"_Part1")
 
@@ -1016,10 +1009,6 @@ def build_mesh_from_numpy(v, uv, vt, vn, name='newMesh'):
                          同一 face_id 连续出现，长度=该面顶点数
     vn  : (P,3)  float   顶点级法线
     """
-    print(v.shape)
-    print(uv.shape)
-    print(vt.shape)
-    print(vn.shape)
     # ---------- 1. 顶点 ----------
     points = om.MPointArray([om.MPoint(*p) for p in v])
 
@@ -1094,7 +1083,6 @@ def SplitMeshes_cmd():
         g_lastPath = os.path.dirname(path[0])
         meshes = get_selected_meshes_numpy("split")
         meshName, merged_v, merged_uv,merged_vn, merged_vt = meshes[0]
-        print("vn num:",merged_vn.shape[0])
         SplitMeshes(meshName.rsplit('|', 1)[-1],path[0], merged_v, merged_vn)
         
 #endregion

@@ -31,3 +31,4 @@ PoseMatcher 是一款姿态对齐工具，当前主要用于将非 Metahuman 的
 ![ImportNote](Images/MayaImport.png)
 4. 不要导入相同的骨骼，尤其是daz \
 ![SameSkeleton](Images/AvoidSameSkeleton.png)
+5. 如果遇到错误"Wrong number or type of arguments for overloaded function 'new_MVector'". 关闭工具窗口，重新运行脚本即可。
