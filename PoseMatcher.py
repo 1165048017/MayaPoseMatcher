@@ -303,24 +303,26 @@ def align_skeleton(joint_map, mh_root, daz_root):
         parent = cmds.listRelatives(daz_joint, parent=True, fullPath=True)
         joint_aim_map[parent[0]] = getAimUpVector(parent[0],get_joint_direction(daz_joint))[0]
         joint_local_rot[parent[0]] = getlocalRotation(parent[0])
+        if not daz_joint:
+            cmds.warning(f"⚠️ DAZ joint '{daz_joint_name}' not found under root '{get_base_name(daz_root)}'")
+            error_joints.append(daz_joint_name)
+            continue
 
-    
-
-    for mh_joint_name, daz_joint_name in joint_map.items():
+    for mh_joint_name, daz_joint_name in joint_map.items():        
         # Find MetaHuman joints.
         mh_joint = find_joint_by_base_name(mh_joint_name, mh_root)
         if not mh_joint:
             cmds.warning(f"⚠️ MetaHuman joint '{mh_joint_name}' not found under root '{get_base_name(mh_root)}'")
             error_joints.append(mh_joint_name)
             continue
-            
+        
         # Find DAZ joints.
         daz_joint = find_joint_by_base_name(daz_joint_name, daz_root)        
         if not daz_joint:
             cmds.warning(f"⚠️ DAZ joint '{daz_joint_name}' not found under root '{get_base_name(daz_root)}'")
             error_joints.append(daz_joint_name)
             continue
-        
+        print("find full path name {0},{1}".format(mh_joint,daz_joint))
         # Get the DAZ parent joint.
         daz_parents = cmds.listRelatives(daz_joint, parent=True, fullPath=True)
         if not daz_parents:
