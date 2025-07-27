@@ -209,7 +209,7 @@ def getNeedRot(v1:om.MVector,v2:om.MVector):
 def align_parent_to_vector(child_joint, target_vector):
     """Align the parent joint's direction toward its child joint with the target vector."""    
     parent_joint = cmds.listRelatives(child_joint, parent=True, fullPath=True)[0]
-    if(("twist" in parent_joint.rsplit('|', 1)[-1]) or ("Twist" in parent_joint.rsplit('|', 1)[-1])):
+    if(("twist" in parent_joint.rsplit('|', 1)[-1]) or ("Twist" in parent_joint.rsplit('|', 1)[-1]) or ("Meta" in parent_joint.rsplit('|', 1)[-1]) or ("meta" in parent_joint.rsplit('|', 1)[-1])):
         parent_joint = cmds.listRelatives(parent_joint, parent=True, fullPath=True)[0]
     parent_delta_global_rot = get_parent_delta_global_rot(parent_joint)
     
