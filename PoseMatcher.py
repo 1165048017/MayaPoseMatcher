@@ -684,13 +684,13 @@ def execute_alignment_cmd():
     
     prefix = cmds.textField("dazNsField", query=True, text=True)
     for i in range(len(mh_joints)):
-        joint_map[mh_joints[i]] = prefix+daz_joints[i]
+        joint_map[mh_joints[i]] = daz_joints[i]
     
     # Automatically save the current mapping (optional)
-    json_path = cmds.textField("jsonPathField", q=True, text=True)
-    if json_path:
-        if save_joint_map(json_path, joint_map):
-            cmds.warning(f"💾 Map saved to {json_path}")
+    # json_path = cmds.textField("jsonPathField", q=True, text=True)
+    # if json_path:
+    #     if save_joint_map(json_path, joint_map):
+    #         cmds.warning(f"💾 Map saved to {json_path}")
     
     # Perform alignment
     cmds.warning("🔧 Starting skeleton alignment...")
