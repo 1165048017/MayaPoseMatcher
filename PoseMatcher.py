@@ -255,6 +255,14 @@ def find_joint_by_base_name(base_name, root_joint):
         short_name = get_base_name(joint)
         if short_name == base_name:
             return joint
+        
+    cmds.confirmDialog(
+    title='No parent joint error',
+    message= base_name + 'has no parent', 
+    button=['OK'],
+    icon='critical'
+    )
+    cmds.error(base_name + 'has no parent')
     return None
 
 def get_joint_direction(joint_name):
@@ -674,8 +682,9 @@ def execute_alignment_cmd():
         cmds.warning("⚠️ MetaHuman and DAZ joint lists must be the same length")
         return
     
+    prefix = cmds.textField("dazNsField", query=True, text=True)
     for i in range(len(mh_joints)):
-        joint_map[mh_joints[i]] = daz_joints[i]
+        joint_map[mh_joints[i]] = prefix+daz_joints[i]
     
     # Automatically save the current mapping (optional)
     json_path = cmds.textField("jsonPathField", q=True, text=True)
