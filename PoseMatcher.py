@@ -258,13 +258,12 @@ def find_joint_by_base_name(base_name, root_joint):
     
 
     cmds.confirmDialog(
-    title='No parent joint error',
-    message= base_name + ' has no parent named '+ short_name, 
+    title='Cannot find joint error',
+    message= base_name + ' doesnot exist, please correct your json', 
     button=['OK'],
     icon='critical'
     )
-    cmds.error(base_name + 'has no parent')
-    cmds.error(base_name + "need a parent named "+ short_name)
+    cmds.error(base_name + ' doesnot exist, please correct your json')
     return None
 
 def get_joint_direction(joint_name):
