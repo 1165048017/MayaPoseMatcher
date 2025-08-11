@@ -30,6 +30,6 @@ PoseMatcher 是一款姿态对齐工具，当前主要用于将非 Metahuman 的
 # 注意
 1. 请仔细检查映射 Metahuman 与你模型关节的 JSON 文件。
 2. 自动检测功能极不稳定，请尽量避免使用。
-3. 请不要直接将FBX拖入maya，请使用maya的导入按钮并且注意使用命名空间 \
-![ImportNote](Images/MayaImport.png)
-4. 如果遇到错误"Wrong number or type of arguments for overloaded function 'new_MVector'". 关闭工具窗口，重新运行脚本即可。
+3. 请不要直接将FBX拖入maya，如果导入以后模型出现混乱，请使用"窗口->常规编辑器->名称空间编辑器" \
+![ImportNote](Images/ImportWithPrefix.gif)
+1. 如果遇到错误"Wrong number or type of arguments for overloaded function 'new_MVector'". 关闭工具窗口，重新运行脚本即可。

@@ -30,6 +30,6 @@ You may modify and distribute the code freely. For commercial use, please contac
 # Note
 1. Please check your json file which maps the joints between metahuman and your own model.
 2. The auto-detection feature is very unstable; please avoid using it whenever possible.
-3. Do not simply drag your fbx into maya. Please use the import options and use the namespace \
-![ImportNote](Images/MayaImport.png)
+3. Do not simply drag your fbx into maya. If your models messed up, please set "Windows->Normal Editor->NameSpace Editor" \
+![ImportNote](Images/ImportWithPrefix.gif)
 4. If you get error "Wrong number or type of arguments for overloaded function 'new_MVector'". Please simply close the Windows of the Tool and run the script again.
