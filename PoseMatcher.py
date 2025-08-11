@@ -255,14 +255,16 @@ def find_joint_by_base_name(base_name, root_joint):
         short_name = get_base_name(joint)
         if short_name == base_name:
             return joint
-        
+    
+
     cmds.confirmDialog(
     title='No parent joint error',
-    message= base_name + 'has no parent', 
+    message= base_name + ' has no parent named '+ short_name, 
     button=['OK'],
     icon='critical'
     )
     cmds.error(base_name + 'has no parent')
+    cmds.error(base_name + "need a parent named "+ short_name)
     return None
 
 def get_joint_direction(joint_name):
